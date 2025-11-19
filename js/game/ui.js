@@ -1,6 +1,8 @@
 // js/game/ui.js
 import { gameState, selectedCityName, setSelectedCityName } from './state.js';
-import { doTrade, startTravel } from './main.js';
+import { doTrade, startTravel, finishTravel } from './main.js';
+
+let travelIntervalId = null;
 
 function clearElement(el) {
     if (el) el.textContent = "";
@@ -304,7 +306,7 @@ export function hideTravelOverlay() {
     const overlay = document.getElementById("travel-overlay");
     overlay.classList.add("hidden");
     const bar = document.getElementById("travel-progress");
-    bar.style.width = "0%";
+    if(bar) bar.style.width = "0%";
 }
 
 export function updateTravelProgress() {
@@ -323,8 +325,8 @@ export function updateTravelProgress() {
     const bar = document.getElementById("travel-progress");
     const text = document.getElementById("travel-text");
 
-    bar.style.width = ratio * 100 + "%";
-    text.textContent = `Voyage de ${v.depart} vers ${
+    if(bar) bar.style.width = ratio * 100 + "%";
+    if(text) text.textContent = `Voyage de ${v.depart} vers ${
         v.arrivee
     } : ${Math.round(ratio * 100)} %`;
 
