@@ -1,20 +1,19 @@
 // js/game/state.js
 import { defaultWorld } from './data.js';
 
-const SAVE_KEY = "merchant_save_v1";
-const WORLD_KEY = "merchant_world_config_v1";
+const SAVE_KEY = "merchant_save_v2";
+const WORLD_KEY = "merchant_world_config_v2";
 
 export let gameState = null;
-export let selectedCityName = null;
+export let selectedCityId = null;
+export let worldData = null;
 
-export function setSelectedCityName(name) {
-    selectedCityName = name;
+export function setSelectedCityId(id) {
+    selectedCityId = id;
 }
 
-// Deep clone utility
 const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
 
-// Load world data from localStorage or use default
 export function loadWorldData() {
     const raw = localStorage.getItem(WORLD_KEY);
     if (raw) {
@@ -22,36 +21,34 @@ export function loadWorldData() {
             const parsed = JSON.parse(raw);
             if (parsed && parsed.villes && parsed.ressources && parsed.routes) {
                 console.log("Custom world configuration loaded.");
-                return parsed;
+                worldData = parsed;
+                return;
             }
         } catch (e) {
             console.error("Failed to load world configuration, using default.", e);
         }
     }
     console.log("Using default world configuration.");
-    return defaultWorld;
+    worldData = defaultWorld;
 }
 
-// Random city name utility
-function randomCityName(worldData) {
+function randomCityId() {
     const keys = Object.keys(worldData.villes);
     return keys[Math.floor(Math.random() * keys.length)];
 }
 
-// Compute travel reduction based on level
 function computeReduction(level) {
-    return Math.min(0.5, level * 0.02); // 2% per level, max 50%
+    return Math.min(0.5, level * 0.02);
 }
 
-// Create a new game state
-export function createNewGameState(worldData) {
-    const startCity = randomCityName(worldData);
+export function createNewGameState() {
+    const startCityId = randomCityId();
     const cargaison = {};
-    worldData.ressources.forEach((r) => (cargaison[r] = 0));
+    Object.keys(worldData.ressources).forEach(resId => cargaison[resId] = 0);
 
     const joueur = {
         nom: "Marchand",
-        villeActuelle: startCity,
+        villeActuelle: startCityId,
         or: 1000,
         cargaison,
         niveau: 1,
@@ -61,22 +58,21 @@ export function createNewGameState(worldData) {
     joueur.reductionVoyage = computeReduction(joueur.niveau);
 
     gameState = {
-        ressources: worldData.ressources.slice(),
+        ressources: deepClone(worldData.ressources),
         villes: deepClone(worldData.villes),
         routes: deepClone(worldData.routes),
         joueur,
         voyage: null,
     };
-    selectedCityName = gameState.joueur.villeActuelle;
+    selectedCityId = gameState.joueur.villeActuelle;
 }
 
-// Save and Load game state
 export function saveGame(showMsg = true) {
     if (!gameState) return;
     localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
     if (showMsg) {
-        // This function will need to be imported or passed in
-        showMessage("Partie sauvegardée.");
+        // This function will need to be imported from ui.js
+        console.log("Partie sauvegardée.");
     }
 }
 
@@ -85,7 +81,6 @@ export function loadGameFromStorage() {
     if (!raw) return null;
     try {
         const state = JSON.parse(raw);
-        // Clean up any malformed or finished voyages
         if (state.voyage) {
             const v = state.voyage;
             const now = Date.now();
@@ -105,10 +100,14 @@ export function loadGameFromStorage() {
         state.joueur.reductionVoyage = computeReduction(state.joueur.niveau);
 
         gameState = state;
-        selectedCityName = gameState.joueur.villeActuelle;
+        selectedCityId = gameState.joueur.villeActuelle;
         return state;
     } catch (e) {
         console.error("Error loading game:", e);
         return null;
     }
+}
+
+export function getGameState() {
+    return gameState;
 }

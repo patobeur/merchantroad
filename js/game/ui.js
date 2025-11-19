@@ -1,5 +1,5 @@
 // js/game/ui.js
-import { gameState, selectedCityName, setSelectedCityName } from './state.js';
+import { getGameState, selectedCityId, setSelectedCityId } from './state.js';
 import { doTrade, startTravel, finishTravel } from './main.js';
 
 let travelIntervalId = null;
@@ -23,25 +23,28 @@ export function showMessage(text) {
 }
 
 export function renderAll() {
+    const gameState = getGameState();
     if (!gameState) return;
-    if (!selectedCityName || !gameState.villes[selectedCityName]) {
-        setSelectedCityName(gameState.joueur.villeActuelle);
+
+    if (!selectedCityId || !gameState.villes[selectedCityId]) {
+        setSelectedCityId(gameState.joueur.villeActuelle);
     }
     renderPlayerPanel();
     renderCitiesList();
-    renderCityDetails(selectedCityName);
+    renderCityDetails(selectedCityId);
     renderTradePanel();
     renderTravelPanel();
 }
 
 function renderPlayerPanel() {
+    const gameState = getGameState();
     const j = gameState.joueur;
     const info = document.getElementById("player-info");
     clearElement(info);
 
     const lines = [
         `Nom : ${j.nom}`,
-        `Ville actuelle : ${j.villeActuelle}`,
+        `Ville actuelle : ${gameState.villes[j.villeActuelle].name}`,
         `Or : ${formatOr(j.or)}`,
         `Niveau : ${j.niveau}`,
         `XP : ${j.xp}`,
@@ -58,10 +61,10 @@ function renderPlayerPanel() {
     clearElement(cargoDiv);
     const ul = document.createElement("ul");
 
-    gameState.ressources.forEach(r => {
+    Object.keys(gameState.ressources).forEach(resId => {
         const li = document.createElement("li");
-        const q = j.cargaison[r] || 0;
-        li.textContent = `${r} : ${q}`;
+        const q = j.cargaison[resId] || 0;
+        li.textContent = `${gameState.ressources[resId].name} : ${q}`;
         ul.appendChild(li);
     });
 
@@ -69,38 +72,41 @@ function renderPlayerPanel() {
 }
 
 function renderCitiesList() {
+    const gameState = getGameState();
     const list = document.getElementById("cities-list");
     clearElement(list);
-    const current = gameState.joueur.villeActuelle;
+    const currentId = gameState.joueur.villeActuelle;
 
-    Object.keys(gameState.villes).forEach(name => {
+    Object.values(gameState.villes).forEach(ville => {
         const btn = document.createElement("button");
         btn.className = "city-btn";
-        btn.textContent = name;
-        if (name === current) btn.classList.add("current-city");
-        if (name === selectedCityName) btn.classList.add("selected-city");
+        btn.textContent = ville.name;
+        if (ville.id === currentId) btn.classList.add("current-city");
+        if (ville.id === selectedCityId) btn.classList.add("selected-city");
         btn.addEventListener("click", () => {
-            setSelectedCityName(name);
+            setSelectedCityId(ville.id);
             renderAll();
         });
         list.appendChild(btn);
     });
 }
 
-function renderCityDetails(cityName) {
+function renderCityDetails(cityId) {
+    const gameState = getGameState();
     const container = document.getElementById("city-details");
     clearElement(container);
-    const ville = gameState.villes[cityName];
+    const ville = gameState.villes[cityId];
     if (!ville) {
         container.textContent = "Ville inconnue.";
         return;
     }
-    const isCurrent = cityName === gameState.joueur.villeActuelle;
+    const isCurrent = cityId === gameState.joueur.villeActuelle;
     const h3 = document.createElement("h3");
-    h3.textContent = isCurrent ? `${cityName} (ville actuelle)` : cityName;
+    h3.textContent = isCurrent ? `${ville.name} (ville actuelle)` : ville.name;
     container.appendChild(h3);
 
     const table = document.createElement("table");
+    // ... (table header creation)
     const thead = document.createElement("thead");
     const trHead = document.createElement("tr");
     const thRes = document.createElement("th");
@@ -117,15 +123,15 @@ function renderCityDetails(cityName) {
 
     const tbody = document.createElement("tbody");
 
-    gameState.ressources.forEach(res => {
-        const info = ville.stocks[res];
+    Object.keys(gameState.ressources).forEach(resId => {
+        const info = ville.stocks[resId];
         if (!info) return;
         const tr = document.createElement("tr");
         const tdRes = document.createElement("td");
+        tdRes.textContent = gameState.ressources[resId].name;
         const tdQ = document.createElement("td");
-        const tdP = document.createElement("td");
-        tdRes.textContent = res;
         tdQ.textContent = info.quantite.toLocaleString("fr-FR");
+        const tdP = document.createElement("td");
         tdP.textContent = info.prix.toLocaleString("fr-FR");
         tr.appendChild(tdRes);
         tr.appendChild(tdQ);
@@ -138,36 +144,38 @@ function renderCityDetails(cityName) {
 }
 
 function renderTradePanel() {
+    const gameState = getGameState();
     const tradeDiv = document.getElementById("trade-content");
     clearElement(tradeDiv);
     const j = gameState.joueur;
     const canTrade = !gameState.voyage;
 
     const p = document.createElement("p");
-    p.textContent = `Vous pouvez commercer uniquement dans ${j.villeActuelle}.`;
+    p.textContent = `Vous pouvez commercer uniquement dans ${gameState.villes[j.villeActuelle].name}.`;
     tradeDiv.appendChild(p);
 
     const form = document.createElement("form");
+    // ... (form setup)
     form.id = "trade-form";
     form.addEventListener("submit", (event) => event.preventDefault());
 
-    // Choix ressource
+
     const groupRes = document.createElement("div");
     const labelRes = document.createElement("label");
     labelRes.setAttribute("for", "trade-resource");
     labelRes.textContent = "Ressource";
     const selectRes = document.createElement("select");
     selectRes.id = "trade-resource";
-    gameState.ressources.forEach(r => {
+    Object.values(gameState.ressources).forEach(res => {
         const opt = document.createElement("option");
-        opt.value = r;
-        opt.textContent = r;
+        opt.value = res.id;
+        opt.textContent = res.name;
         selectRes.appendChild(opt);
     });
     groupRes.appendChild(labelRes);
     groupRes.appendChild(selectRes);
 
-    // Quantité
+    // ... (quantity input, buy/sell buttons setup)
     const groupQty = document.createElement("div");
     const labelQty = document.createElement("label");
     labelQty.setAttribute("for", "trade-quantity");
@@ -180,7 +188,6 @@ function renderTradePanel() {
     groupQty.appendChild(labelQty);
     groupQty.appendChild(inputQty);
 
-    // Bouton acheter
     const groupBuy = document.createElement("div");
     const btnBuy = document.createElement("button");
     btnBuy.id = "btn-acheter";
@@ -188,7 +195,6 @@ function renderTradePanel() {
     btnBuy.textContent = "Acheter";
     groupBuy.appendChild(btnBuy);
 
-    // Bouton vendre
     const groupSell = document.createElement("div");
     const btnSell = document.createElement("button");
     btnSell.id = "btn-vendre";
@@ -202,19 +208,20 @@ function renderTradePanel() {
     form.appendChild(groupSell);
     tradeDiv.appendChild(form);
 
+
     const hint = document.createElement("small");
     hint.id = "trade-hint";
     tradeDiv.appendChild(hint);
 
     function updateHint() {
-        const res = selectRes.value;
+        const resId = selectRes.value;
         const qty = Number(inputQty.value) || 0;
         const ville = gameState.villes[j.villeActuelle];
-        const info = ville.stocks[res];
+        const info = ville.stocks[resId];
         const prix = info.prix;
         const total = prix * qty;
         const stockVille = info.quantite;
-        const cargo = j.cargaison[res] || 0;
+        const cargo = j.cargaison[resId] || 0;
         hint.textContent =
             `Prix unitaire : ${prix.toLocaleString("fr-FR")} | ` +
             `Coût total (achat) : ${total.toLocaleString("fr-FR")} | ` +
@@ -234,6 +241,7 @@ function renderTradePanel() {
     });
 
     if (!canTrade) {
+        // ... (disable controls)
         const controls = tradeDiv.querySelectorAll(
             "input, select, button"
         );
@@ -243,29 +251,32 @@ function renderTradePanel() {
 }
 
 function renderTravelPanel() {
+    const gameState = getGameState();
     const panel = document.getElementById("travel-panel-list");
     clearElement(panel);
     const j = gameState.joueur;
     const routesFrom = gameState.routes[j.villeActuelle] || {};
     const isTraveling = !!gameState.voyage;
 
-    const routeNames = Object.keys(routesFrom);
-    if (routeNames.length === 0) {
+    const routeIds = Object.keys(routesFrom);
+    if (routeIds.length === 0) {
+        // ... (no routes message)
         const div = document.createElement("div");
         div.textContent = "Aucune route depuis cette ville.";
         panel.appendChild(div);
         return;
     }
 
-    routeNames.forEach(dest => {
-        const route = routesFrom[dest];
+    routeIds.forEach(destId => {
+        const route = routesFrom[destId];
         const wrap = document.createElement("div");
         wrap.className = "travel-item";
 
         const strong = document.createElement("strong");
-        strong.textContent = dest;
+        strong.textContent = gameState.villes[destId].name;
         wrap.appendChild(strong);
 
+        // ... (route details and travel button)
         const tempsSec = (route.temps / 1000).toFixed(1);
         const coutBase = route.cout;
         const coutReel = Math.round(coutBase * (1 - j.reductionVoyage));
@@ -284,10 +295,10 @@ function renderTravelPanel() {
         lineBtn.style.marginTop = ".3rem";
         const btn = document.createElement("button");
         btn.textContent = "Voyager";
-        btn.dataset.dest = dest;
+        btn.dataset.dest = destId;
         if (isTraveling) btn.disabled = true;
         btn.addEventListener("click", () => {
-            startTravel(dest);
+            startTravel(destId);
         });
         lineBtn.appendChild(btn);
         wrap.appendChild(lineBtn);
@@ -310,6 +321,7 @@ export function hideTravelOverlay() {
 }
 
 export function updateTravelProgress() {
+    const gameState = getGameState();
     const v = gameState && gameState.voyage;
     if (!v) {
         hideTravelOverlay();
@@ -326,8 +338,8 @@ export function updateTravelProgress() {
     const text = document.getElementById("travel-text");
 
     if(bar) bar.style.width = ratio * 100 + "%";
-    if(text) text.textContent = `Voyage de ${v.depart} vers ${
-        v.arrivee
+    if(text) text.textContent = `Voyage de ${gameState.villes[v.depart].name} vers ${
+        gameState.villes[v.arrivee].name
     } : ${Math.round(ratio * 100)} %`;
 
     if (ratio >= 1) {

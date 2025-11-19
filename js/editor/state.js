@@ -2,14 +2,14 @@
 import { WORLD_KEY } from "./config.js";
 
 export let worldConfig = null;
-export let selectedCityName = null;
+export let selectedCityId = null;
 
 export function setWorldConfig(newConfig) {
 	worldConfig = newConfig;
 }
 
-export function setSelectedCityName(newName) {
-	selectedCityName = newName;
+export function setSelectedCityId(newId) {
+	selectedCityId = newId;
 }
 
 export function loadWorldConfig() {

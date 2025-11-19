@@ -1,6 +1,6 @@
 // js/editor/renderer.js
-import { worldConfig, selectedCityName, setSelectedCityName } from "./state.js";
-import { clearElement, ensureCityStocksFollowResources, recalcRoutes, showMessage } from "./utils.js";
+import { worldConfig, selectedCityId, setSelectedCityId } from "./state.js";
+import { clearElement, ensureCityStocksFollowResources, recalcRoutes, showMessage, getUniqueName } from "./utils.js";
 
 function renderMap() {
 	const canvas = document.getElementById("map-canvas");
@@ -30,7 +30,7 @@ function renderMap() {
 	}
 	ctx.stroke();
 
-	Object.entries(worldConfig.villes).forEach(([name, ville]) => {
+	for (const [id, ville] of Object.entries(worldConfig.villes)) {
 		const cx = (ville.x + 0.5) * cellW;
 		const cy = (ville.y + 0.5) * cellH;
 		const radius = Math.min(cellW, cellH) * 0.35;
@@ -41,7 +41,7 @@ function renderMap() {
 		ctx.fillStyle = color;
 		ctx.fill();
 
-		if (name === selectedCityName) {
+		if (id === selectedCityId) {
 			ctx.lineWidth = 3;
 			ctx.strokeStyle = "#4fc3f7";
 			ctx.stroke();
@@ -51,8 +51,8 @@ function renderMap() {
 		ctx.font = `${Math.round(radius)}px system-ui`;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
-		ctx.fillText(name[0] || "?", cx, cy);
-	});
+		ctx.fillText(ville.name[0] || "?", cx, cy);
+	}
 }
 
 function renderCitiesPanel() {
@@ -61,38 +61,37 @@ function renderCitiesPanel() {
 	clearElement(listDiv);
 	clearElement(formContainer);
 
-	const names = Object.keys(worldConfig.villes);
-	names.forEach((name) => {
+	Object.values(worldConfig.villes).forEach((ville) => {
 		const pill = document.createElement("button");
 		pill.className = "city-pill";
 		pill.type = "button";
-		pill.textContent = name;
-		if (name === selectedCityName) pill.classList.add("selected");
+		pill.textContent = ville.name;
+		if (ville.id === selectedCityId) pill.classList.add("selected");
 		pill.addEventListener("click", () => {
-			setSelectedCityName(name);
+			setSelectedCityId(ville.id);
 			renderAll();
 		});
 		listDiv.appendChild(pill);
 	});
 
-	if (!selectedCityName || !worldConfig.villes[selectedCityName]) {
+	if (!selectedCityId || !worldConfig.villes[selectedCityId]) {
 		const info = document.createElement("div");
 		info.textContent = "Sélectionnez une ville pour la modifier.";
 		formContainer.appendChild(info);
 		return;
 	}
 
-	const ville = worldConfig.villes[selectedCityName];
+	const ville = worldConfig.villes[selectedCityId];
 
 	const title = document.createElement("h3");
-	title.textContent = `Édition : ${selectedCityName}`;
+	title.textContent = `Édition : ${ville.name}`;
 	formContainer.appendChild(title);
 
 	const labelName = document.createElement("label");
 	labelName.textContent = "Nom de la ville";
 	const inputName = document.createElement("input");
 	inputName.type = "text";
-	inputName.value = selectedCityName;
+	inputName.value = ville.name;
 	formContainer.appendChild(labelName);
 	formContainer.appendChild(inputName);
 
@@ -145,29 +144,22 @@ function renderCitiesPanel() {
 
 	inputName.addEventListener("change", () => {
 		const newName = inputName.value.trim();
-		if (!newName || newName === selectedCityName) {
-			inputName.value = selectedCityName;
+        if (!newName) {
+            inputName.value = ville.name;
+            return;
+        }
+
+        const isDuplicate = Object.values(worldConfig.villes).some(
+            (v) => v.name === newName && v.id !== selectedCityId
+        );
+
+		if (isDuplicate) {
+			showMessage("Une autre ville porte déjà ce nom.");
+			inputName.value = ville.name;
 			return;
 		}
-		if (worldConfig.villes[newName]) {
-			showMessage("Une ville porte déjà ce nom.");
-			inputName.value = selectedCityName;
-			return;
-		}
-		worldConfig.villes[newName] = worldConfig.villes[selectedCityName];
-		delete worldConfig.villes[selectedCityName];
 
-		const routes = worldConfig.routes || {};
-		routes[newName] = routes[selectedCityName] || {};
-		delete routes[selectedCityName];
-		Object.keys(routes).forEach((other) => {
-			if (routes[other][selectedCityName]) {
-				routes[other][newName] = routes[other][selectedCityName];
-				delete routes[other][selectedCityName];
-			}
-		});
-
-		setSelectedCityName(newName);
+        ville.name = newName;
 		showMessage("Ville renommée.");
 		renderAll();
 	});
@@ -198,18 +190,21 @@ function renderCitiesPanel() {
 	});
 
 	btnDelete.addEventListener("click", () => {
-		if (!confirm(`Supprimer la ville "${selectedCityName}" ?`)) return;
-		delete worldConfig.villes[selectedCityName];
-		if (worldConfig.routes) {
-			delete worldConfig.routes[selectedCityName];
+		if (!confirm(`Supprimer la ville "${ville.name}" ?`)) return;
+
+        delete worldConfig.villes[selectedCityId];
+
+        if (worldConfig.routes) {
+			delete worldConfig.routes[selectedCityId];
 			Object.keys(worldConfig.routes).forEach((other) => {
-				if (worldConfig.routes[other][selectedCityName]) {
-					delete worldConfig.routes[other][selectedCityName];
+				if (worldConfig.routes[other][selectedCityId]) {
+					delete worldConfig.routes[other][selectedCityId];
 				}
 			});
 		}
-		const remaining = Object.keys(worldConfig.villes);
-		setSelectedCityName(remaining[0] || null);
+
+		const remainingIds = Object.keys(worldConfig.villes);
+		setSelectedCityId(remainingIds[0] || null);
 		recalcRoutes();
 		renderAll();
 		showMessage("Ville supprimée.");
@@ -220,21 +215,13 @@ function renderResourcesPanel() {
 	const listDiv = document.getElementById("resources-list");
 	clearElement(listDiv);
 
-	worldConfig.ressources.forEach((res, index) => {
+	Object.values(worldConfig.ressources).forEach((res) => {
 		const row = document.createElement("div");
 		row.className = "resource-row";
 
 		const input = document.createElement("input");
 		input.type = "text";
-		input.value = res;
-
-		const btnUp = document.createElement("button");
-		btnUp.type = "button";
-		btnUp.textContent = "↑";
-
-		const btnDown = document.createElement("button");
-		btnDown.type = "button";
-		btnDown.textContent = "↓";
+		input.value = res.name;
 
 		const btnDel = document.createElement("button");
 		btnDel.type = "button";
@@ -242,68 +229,44 @@ function renderResourcesPanel() {
 		btnDel.style.background = "#b71c1c";
 
 		row.appendChild(input);
-		row.appendChild(btnUp);
-		row.appendChild(btnDown);
 		row.appendChild(btnDel);
-
 		listDiv.appendChild(row);
 
 		input.addEventListener("change", () => {
 			const newName = input.value.trim();
-			if (!newName) {
-				input.value = res;
-				return;
-			}
-			if (newName === res) return;
+            if (!newName) {
+                input.value = res.name;
+                return;
+            }
 
-			if (worldConfig.ressources.includes(newName)) {
+            const isDuplicate = Object.values(worldConfig.ressources).some(
+                r => r.name === newName && r.id !== res.id
+            );
+
+			if (isDuplicate) {
 				showMessage("Cette ressource existe déjà.");
-				input.value = res;
+				input.value = res.name;
 				return;
 			}
 
-			worldConfig.ressources[index] = newName;
-			Object.values(worldConfig.villes).forEach((ville) => {
-				if (!ville.stocks) ville.stocks = {};
-				if (ville.stocks[newName]) return;
-				if (ville.stocks[res]) {
-					ville.stocks[newName] = ville.stocks[res];
-					delete ville.stocks[res];
-				} else {
-					ville.stocks[newName] = { quantite: 0, prix: 10 };
-				}
-			});
-			renderCitiesPanel();
-		});
-
-		btnUp.addEventListener("click", () => {
-			if (index === 0) return;
-			const arr = worldConfig.ressources;
-			const tmp = arr[index - 1];
-			arr[index - 1] = arr[index];
-			arr[index] = tmp;
-			renderResourcesPanel();
-		});
-
-		btnDown.addEventListener("click", () => {
-			const arr = worldConfig.ressources;
-			if (index >= arr.length - 1) return;
-			const tmp = arr[index + 1];
-			arr[index + 1] = arr[index];
-			arr[index] = tmp;
-			renderResourcesPanel();
+            res.name = newName;
+            showMessage("Ressource renommée.");
+			renderAll();
 		});
 
 		btnDel.addEventListener("click", () => {
-			if (!confirm(`Supprimer la ressource "${res}" ?`)) return;
-			worldConfig.ressources.splice(index, 1);
+			if (!confirm(`Supprimer la ressource "${res.name}" ?`)) return;
+
+            delete worldConfig.ressources[res.id];
+
 			Object.values(worldConfig.villes).forEach((ville) => {
-				if (ville.stocks && ville.stocks[res]) {
-					delete ville.stocks[res];
+				if (ville.stocks && ville.stocks[res.id]) {
+					delete ville.stocks[res.id];
 				}
 			});
-			renderResourcesPanel();
-			renderCitiesPanel();
+
+			renderAll();
+            showMessage("Ressource supprimée.");
 		});
 	});
 }

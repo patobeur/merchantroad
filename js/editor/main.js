@@ -4,13 +4,14 @@ import { renderAll } from "./renderer.js";
 import {
 	worldConfig,
 	setWorldConfig,
-	setSelectedCityName,
+	setSelectedCityId,
 	loadWorldConfig,
 	saveWorldConfig,
 } from "./state.js";
 import {
 	recalcRoutes,
-	getUniqueCityName,
+	generateUniqueId,
+    getUniqueName,
 	ensureCityStocksFollowResources,
 	showMessage,
 	handleCanvasClick,
@@ -34,7 +35,7 @@ function setupTopButtons() {
 			return;
 		setWorldConfig(createDefaultWorldConfig());
 		recalcRoutes();
-		setSelectedCityName(Object.keys(worldConfig.villes)[0] || null);
+		setSelectedCityId(Object.keys(worldConfig.villes)[0] || null);
 		renderAll();
 		showMessage("Nouvelle configuration créée.");
 	});
@@ -60,13 +61,14 @@ function setupTopButtons() {
 		if (!worldConfig.routes) {
 			recalcRoutes();
 		}
-		setSelectedCityName(Object.keys(worldConfig.villes)[0] || null);
+		setSelectedCityId(Object.keys(worldConfig.villes)[0] || null);
 		renderAll();
 		showMessage("Configuration chargée.");
 	});
 
 	btnSave.addEventListener("click", () => {
 		saveWorldConfig(true);
+        showMessage("Configuration sauvegardée.");
 	});
 
 	btnExport.addEventListener("click", () => {
@@ -84,17 +86,19 @@ function setupTopButtons() {
 	});
 
 	btnAddCity.addEventListener("click", () => {
-		const base = "NouvelleVille";
-		const name = getUniqueCityName(base);
+        const id = generateUniqueId("ville");
+        const name = getUniqueName("NouvelleVille", worldConfig.villes);
 		const meta = worldConfig.meta;
 		const newCity = {
+            id,
+            name,
 			x: Math.floor(meta.gridWidth / 2),
 			y: Math.floor(meta.gridHeight / 2),
 			couleur: "#ffffff",
 			stocks: {},
 		};
-		worldConfig.villes[name] = newCity;
-		setSelectedCityName(name);
+		worldConfig.villes[id] = newCity;
+		setSelectedCityId(id);
 		ensureCityStocksFollowResources();
 		recalcRoutes();
 		renderAll();
@@ -102,16 +106,12 @@ function setupTopButtons() {
 	});
 
 	btnAddRes.addEventListener("click", () => {
-		const base = "Ressource";
-		let idx = worldConfig.ressources.length + 1;
-		let name = base + "_" + idx;
-		while (worldConfig.ressources.includes(name)) {
-			idx++;
-			name = base + "_" + idx;
-		}
-		worldConfig.ressources.push(name);
+        const id = generateUniqueId("res");
+        const name = getUniqueName("Ressource", worldConfig.ressources);
+		worldConfig.ressources[id] = { id, name };
 		ensureCityStocksFollowResources();
 		renderAll();
+        showMessage("Ressource ajoutée.");
 	});
 
 	btnRecalcRoutes.addEventListener("click", () => {
@@ -133,7 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	if (!worldConfig.routes || Object.keys(worldConfig.routes).length === 0) {
 		recalcRoutes();
 	}
-	setSelectedCityName(Object.keys(worldConfig.villes)[0] || null);
+	setSelectedCityId(Object.keys(worldConfig.villes)[0] || null);
 
 	setupTopButtons();
 

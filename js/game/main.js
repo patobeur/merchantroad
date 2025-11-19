@@ -1,5 +1,5 @@
 // js/game/main.js
-import { gameState, createNewGameState, saveGame, loadGameFromStorage, loadWorldData, setSelectedCityName } from './state.js';
+import { getGameState, createNewGameState, saveGame, loadGameFromStorage, loadWorldData, setSelectedCityId, worldData } from './state.js';
 import { renderAll, showMessage, showTravelOverlay, hideTravelOverlay, updateTravelProgress } from './ui.js';
 
 let travelIntervalId = null;
@@ -9,6 +9,7 @@ function computeReduction(level) {
 }
 
 function addXp(amount) {
+    const gameState = getGameState();
     const j = gameState.joueur;
     j.xp += amount;
     const oldLevel = j.niveau;
@@ -19,7 +20,8 @@ function addXp(amount) {
     }
 }
 
-export function doTrade(type, res, qtyStr) {
+export function doTrade(type, resId, qtyStr) {
+    const gameState = getGameState();
     if (gameState.voyage) {
         showMessage("Vous ne pouvez pas commercer pendant un voyage.");
         return;
@@ -27,12 +29,13 @@ export function doTrade(type, res, qtyStr) {
     const j = gameState.joueur;
     const ville = gameState.villes[j.villeActuelle];
     const qty = Math.max(1, Number(qtyStr) || 0);
-    const info = ville.stocks[res];
+    const info = ville.stocks[resId];
 
     if (!info) {
         showMessage("Ressource inconnue.");
         return;
     }
+    const resourceName = gameState.ressources[resId].name;
 
     if (type === "buy") {
         const totalCost = info.prix * qty;
@@ -46,34 +49,35 @@ export function doTrade(type, res, qtyStr) {
         }
         info.quantite -= qty;
         j.or -= totalCost;
-        j.cargaison[res] = (j.cargaison[res] || 0) + qty;
+        j.cargaison[resId] = (j.cargaison[resId] || 0) + qty;
         addXp(qty);
-        showMessage(`Achat de ${qty} ${res}.`);
+        showMessage(`Achat de ${qty} ${resourceName}.`);
     } else {
-        const cargoQty = j.cargaison[res] || 0;
+        const cargoQty = j.cargaison[resId] || 0;
         if (cargoQty < qty) {
             showMessage("Vous n'avez pas assez de marchandise à vendre.");
             return;
         }
         const totalGain = info.prix * qty;
         info.quantite += qty;
-        j.cargaison[res] = cargoQty - qty;
+        j.cargaison[resId] -= qty;
         j.or += totalGain;
         addXp(qty);
-        showMessage(`Vente de ${qty} ${res}.`);
+        showMessage(`Vente de ${qty} ${resourceName}.`);
     }
 
     saveGame(false);
     renderAll();
 }
 
-export function startTravel(destination) {
+export function startTravel(destinationId) {
+    const gameState = getGameState();
     const j = gameState.joueur;
-    const from = j.villeActuelle;
-    if (from === destination) return;
+    const fromId = j.villeActuelle;
+    if (fromId === destinationId) return;
 
-    const routesFrom = gameState.routes[from] || {};
-    const route = routesFrom[destination];
+    const routesFrom = gameState.routes[fromId] || {};
+    const route = routesFrom[destinationId];
     if (!route) {
         showMessage("Aucune route disponible.");
         return;
@@ -94,8 +98,8 @@ export function startTravel(destination) {
 
     const now = Date.now();
     gameState.voyage = {
-        depart: from,
-        arrivee: destination,
+        depart: fromId,
+        arrivee: destinationId,
         tempsTotal: route.temps,
         startTime: now,
     };
@@ -109,18 +113,20 @@ export function startTravel(destination) {
 }
 
 export function finishTravel() {
+    const gameState = getGameState();
     const v = gameState.voyage;
     if (!v) return;
     gameState.joueur.villeActuelle = v.arrivee;
     gameState.voyage = null;
-    setSelectedCityName(v.arrivee);
+    setSelectedCityId(v.arrivee);
     hideTravelOverlay();
     saveGame(false);
-    showMessage(`Arrivé à ${v.arrivee}.`);
+    showMessage(`Arrivé à ${gameState.villes[v.arrivee].name}.`);
     renderAll();
 }
 
 function showGameScreen() {
+    const gameState = getGameState();
     document.getElementById("game-screen").classList.remove("hidden");
     renderAll();
     if (gameState.voyage) {
@@ -131,15 +137,15 @@ function showGameScreen() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    const worldData = loadWorldData();
+    loadWorldData();
     const btnLoad = document.getElementById("btn-load-game");
 
-    if (!localStorage.getItem("merchant_save_v1")) {
+    if (!localStorage.getItem("merchant_save_v2")) {
         btnLoad.disabled = true;
     }
 
     document.getElementById("btn-new-game").addEventListener("click", () => {
-        createNewGameState(worldData);
+        createNewGameState();
         saveGame(false);
         showGameScreen();
         btnLoad.disabled = false;
@@ -154,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     document.getElementById("btn-reset-save").addEventListener("click", () => {
-        localStorage.removeItem("merchant_save_v1");
+        localStorage.removeItem("merchant_save_v2");
         showMessage("Sauvegarde effacée.");
         btnLoad.disabled = true;
         document.getElementById("game-screen").classList.add("hidden");
@@ -162,5 +168,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("btn-save-game").addEventListener("click", () => {
         saveGame(true);
+        showMessage("Partie sauvegardée.");
     });
 });
