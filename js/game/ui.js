@@ -30,7 +30,6 @@ export function renderAll() {
     renderPlayerPanel();
     renderCitiesList();
     renderCityDetails(selectedCityName);
-    renderTradePanel();
     renderTravelPanel();
 }
 
@@ -62,6 +61,22 @@ function renderPlayerPanel() {
         const li = document.createElement("li");
         const q = j.cargaison[r] || 0;
         li.textContent = `${r} : ${q}`;
+
+        const sellAllBtn = document.createElement("button");
+        sellAllBtn.textContent = "Tout vendre";
+        sellAllBtn.style.marginLeft = "10px";
+        if (q === 0) {
+            sellAllBtn.disabled = true;
+        }
+        sellAllBtn.addEventListener("click", () => {
+            if (gameState.voyage) {
+                showMessage("Vous ne pouvez pas commercer pendant un voyage.");
+                return;
+            }
+            doTrade('sell', r, q.toString());
+        });
+
+        li.appendChild(sellAllBtn);
         ul.appendChild(li);
     });
 
@@ -95,7 +110,10 @@ function renderCityDetails(cityName) {
         container.textContent = "Ville inconnue.";
         return;
     }
-    const isCurrent = cityName === gameState.joueur.villeActuelle;
+
+    const j = gameState.joueur;
+    const isCurrent = cityName === j.villeActuelle;
+
     const h3 = document.createElement("h3");
     h3.textContent = isCurrent ? `${cityName} (ville actuelle)` : cityName;
     container.appendChild(h3);
@@ -103,144 +121,87 @@ function renderCityDetails(cityName) {
     const table = document.createElement("table");
     const thead = document.createElement("thead");
     const trHead = document.createElement("tr");
-    const thRes = document.createElement("th");
-    thRes.textContent = "Ressource";
-    const thQ = document.createElement("th");
-    thQ.textContent = "Quantité";
-    const thP = document.createElement("th");
-    thP.textContent = "Prix d'achat";
-    trHead.appendChild(thRes);
-    trHead.appendChild(thQ);
-    trHead.appendChild(thP);
+
+    ["Ressource", "En stock", "Prix", "Possédé", "Actions"].forEach(headerText => {
+        const th = document.createElement("th");
+        th.textContent = headerText;
+        trHead.appendChild(th);
+    });
     thead.appendChild(trHead);
     table.appendChild(thead);
 
     const tbody = document.createElement("tbody");
-
     gameState.ressources.forEach(res => {
         const info = ville.stocks[res];
         if (!info) return;
+
         const tr = document.createElement("tr");
-        const tdRes = document.createElement("td");
-        const tdQ = document.createElement("td");
-        const tdP = document.createElement("td");
-        tdRes.textContent = res;
-        tdQ.textContent = info.quantite.toLocaleString("fr-FR");
-        tdP.textContent = info.prix.toLocaleString("fr-FR");
-        tr.appendChild(tdRes);
-        tr.appendChild(tdQ);
-        tr.appendChild(tdP);
+        tr.appendChild(document.createElement("td")).textContent = res;
+        tr.appendChild(document.createElement("td")).textContent = info.quantite.toLocaleString("fr-FR");
+        tr.appendChild(document.createElement("td")).textContent = info.prix.toLocaleString("fr-FR");
+        tr.appendChild(document.createElement("td")).textContent = (j.cargaison[res] || 0).toLocaleString("fr-FR");
+
+        const tdActions = document.createElement("td");
+        const inputQty = document.createElement("input");
+        inputQty.type = "number";
+        inputQty.min = "1";
+        inputQty.value = "1";
+        inputQty.style.width = "60px";
+
+        const btnBuy = document.createElement("button");
+        btnBuy.textContent = "Acheter";
+        btnBuy.addEventListener("click", () => doTrade("buy", res, inputQty.value));
+
+        const btnSell = document.createElement("button");
+        btnSell.textContent = "Vendre";
+        btnSell.addEventListener("click", () => doTrade("sell", res, inputQty.value));
+
+        const totalCostSpan = document.createElement("span");
+        totalCostSpan.style.marginLeft = "10px";
+        totalCostSpan.style.fontSize = "0.9em";
+
+        function updateTotalCost() {
+            const qty = Number(inputQty.value) || 0;
+            const total = qty * info.prix;
+            totalCostSpan.textContent = `(${formatOr(total)} or)`;
+        }
+
+        function setMaxForBuy() {
+            const maxBuyableStock = info.quantite;
+            const maxAffordable = info.prix > 0 ? Math.floor(j.or / info.prix) : 0;
+            inputQty.max = String(Math.min(maxBuyableStock, maxAffordable));
+        }
+
+        function setMaxForSell() {
+            inputQty.max = String(j.cargaison[res] || 0);
+        }
+
+        inputQty.addEventListener("input", updateTotalCost);
+        btnBuy.addEventListener("focus", setMaxForBuy);
+        btnSell.addEventListener("focus", setMaxForSell);
+
+        tdActions.appendChild(inputQty);
+        tdActions.appendChild(btnBuy);
+        tdActions.appendChild(btnSell);
+        tdActions.appendChild(totalCostSpan);
+
+        if (!isCurrent || gameState.voyage) {
+            inputQty.disabled = true;
+            btnBuy.disabled = true;
+            btnSell.disabled = true;
+        }
+
+        tr.appendChild(tdActions);
         tbody.appendChild(tr);
+
+        updateTotalCost();
+        setMaxForBuy();
     });
 
     table.appendChild(tbody);
     container.appendChild(table);
 }
 
-function renderTradePanel() {
-    const tradeDiv = document.getElementById("trade-content");
-    clearElement(tradeDiv);
-    const j = gameState.joueur;
-    const canTrade = !gameState.voyage;
-
-    const p = document.createElement("p");
-    p.textContent = `Vous pouvez commercer uniquement dans ${j.villeActuelle}.`;
-    tradeDiv.appendChild(p);
-
-    const form = document.createElement("form");
-    form.id = "trade-form";
-    form.addEventListener("submit", (event) => event.preventDefault());
-
-    // Choix ressource
-    const groupRes = document.createElement("div");
-    const labelRes = document.createElement("label");
-    labelRes.setAttribute("for", "trade-resource");
-    labelRes.textContent = "Ressource";
-    const selectRes = document.createElement("select");
-    selectRes.id = "trade-resource";
-    gameState.ressources.forEach(r => {
-        const opt = document.createElement("option");
-        opt.value = r;
-        opt.textContent = r;
-        selectRes.appendChild(opt);
-    });
-    groupRes.appendChild(labelRes);
-    groupRes.appendChild(selectRes);
-
-    // Quantité
-    const groupQty = document.createElement("div");
-    const labelQty = document.createElement("label");
-    labelQty.setAttribute("for", "trade-quantity");
-    labelQty.textContent = "Quantité";
-    const inputQty = document.createElement("input");
-    inputQty.type = "number";
-    inputQty.id = "trade-quantity";
-    inputQty.min = "1";
-    inputQty.value = "1";
-    groupQty.appendChild(labelQty);
-    groupQty.appendChild(inputQty);
-
-    // Bouton acheter
-    const groupBuy = document.createElement("div");
-    const btnBuy = document.createElement("button");
-    btnBuy.id = "btn-acheter";
-    btnBuy.type = "button";
-    btnBuy.textContent = "Acheter";
-    groupBuy.appendChild(btnBuy);
-
-    // Bouton vendre
-    const groupSell = document.createElement("div");
-    const btnSell = document.createElement("button");
-    btnSell.id = "btn-vendre";
-    btnSell.type = "button";
-    btnSell.textContent = "Vendre";
-    groupSell.appendChild(btnSell);
-
-    form.appendChild(groupRes);
-    form.appendChild(groupQty);
-    form.appendChild(groupBuy);
-    form.appendChild(groupSell);
-    tradeDiv.appendChild(form);
-
-    const hint = document.createElement("small");
-    hint.id = "trade-hint";
-    tradeDiv.appendChild(hint);
-
-    function updateHint() {
-        const res = selectRes.value;
-        const qty = Number(inputQty.value) || 0;
-        const ville = gameState.villes[j.villeActuelle];
-        const info = ville.stocks[res];
-        const prix = info.prix;
-        const total = prix * qty;
-        const stockVille = info.quantite;
-        const cargo = j.cargaison[res] || 0;
-        hint.textContent =
-            `Prix unitaire : ${prix.toLocaleString("fr-FR")} | ` +
-            `Coût total (achat) : ${total.toLocaleString("fr-FR")} | ` +
-            `Stock ville : ${stockVille.toLocaleString("fr-FR")} | ` +
-            `Vous : ${cargo}`;
-    }
-
-    selectRes.addEventListener("change", updateHint);
-    inputQty.addEventListener("input", updateHint);
-    updateHint();
-
-    btnBuy.addEventListener("click", () => {
-        doTrade("buy", selectRes.value, inputQty.value);
-    });
-    btnSell.addEventListener("click", () => {
-        doTrade("sell", selectRes.value, inputQty.value);
-    });
-
-    if (!canTrade) {
-        const controls = tradeDiv.querySelectorAll(
-            "input, select, button"
-        );
-        controls.forEach(el => (el.disabled = true));
-        hint.textContent = "Impossible de commercer pendant un voyage.";
-    }
-}
 
 function renderTravelPanel() {
     const panel = document.getElementById("travel-panel-list");
