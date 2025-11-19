@@ -136,29 +136,17 @@ function renderCityDetails(cityName) {
         if (!info) return;
 
         const tr = document.createElement("tr");
-
-        const tdRes = document.createElement("td");
-        tdRes.textContent = res;
-        tr.appendChild(tdRes);
-
-        const tdQ = document.createElement("td");
-        tdQ.textContent = info.quantite.toLocaleString("fr-FR");
-        tr.appendChild(tdQ);
-
-        const tdP = document.createElement("td");
-        tdP.textContent = info.prix.toLocaleString("fr-FR");
-        tr.appendChild(tdP);
-
-        const tdPlayerQ = document.createElement("td");
-        tdPlayerQ.textContent = (j.cargaison[res] || 0).toLocaleString("fr-FR");
-        tr.appendChild(tdPlayerQ);
+        tr.appendChild(document.createElement("td")).textContent = res;
+        tr.appendChild(document.createElement("td")).textContent = info.quantite.toLocaleString("fr-FR");
+        tr.appendChild(document.createElement("td")).textContent = info.prix.toLocaleString("fr-FR");
+        tr.appendChild(document.createElement("td")).textContent = (j.cargaison[res] || 0).toLocaleString("fr-FR");
 
         const tdActions = document.createElement("td");
         const inputQty = document.createElement("input");
         inputQty.type = "number";
         inputQty.min = "1";
         inputQty.value = "1";
-        inputQty.style.width = "50px";
+        inputQty.style.width = "60px";
 
         const btnBuy = document.createElement("button");
         btnBuy.textContent = "Acheter";
@@ -168,9 +156,34 @@ function renderCityDetails(cityName) {
         btnSell.textContent = "Vendre";
         btnSell.addEventListener("click", () => doTrade("sell", res, inputQty.value));
 
+        const totalCostSpan = document.createElement("span");
+        totalCostSpan.style.marginLeft = "10px";
+        totalCostSpan.style.fontSize = "0.9em";
+
+        function updateTotalCost() {
+            const qty = Number(inputQty.value) || 0;
+            const total = qty * info.prix;
+            totalCostSpan.textContent = `(${formatOr(total)} or)`;
+        }
+
+        function setMaxForBuy() {
+            const maxBuyableStock = info.quantite;
+            const maxAffordable = info.prix > 0 ? Math.floor(j.or / info.prix) : 0;
+            inputQty.max = String(Math.min(maxBuyableStock, maxAffordable));
+        }
+
+        function setMaxForSell() {
+            inputQty.max = String(j.cargaison[res] || 0);
+        }
+
+        inputQty.addEventListener("input", updateTotalCost);
+        btnBuy.addEventListener("focus", setMaxForBuy);
+        btnSell.addEventListener("focus", setMaxForSell);
+
         tdActions.appendChild(inputQty);
         tdActions.appendChild(btnBuy);
         tdActions.appendChild(btnSell);
+        tdActions.appendChild(totalCostSpan);
 
         if (!isCurrent || gameState.voyage) {
             inputQty.disabled = true;
@@ -180,6 +193,9 @@ function renderCityDetails(cityName) {
 
         tr.appendChild(tdActions);
         tbody.appendChild(tr);
+
+        updateTotalCost();
+        setMaxForBuy();
     });
 
     table.appendChild(tbody);
