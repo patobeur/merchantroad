@@ -4,34 +4,36 @@
 		<meta charset="UTF-8" />
 		<title>Jeu de marchand - Villes & Ressources</title>
 		<link rel="stylesheet" href="assets/style.css" />
-		<link rel="stylesheet" href="assets/navbar.css" />
 	</head>
 	<body>
 		<div id="message-bar"></div>
 
-		<nav class="navbar">
-			<div class="navbar-title">Marchand de Colonies</div>
-			<div class="navbar-menu">
-				<div class="menu-item">
-					<button class="menu-button">Partie</button>
-					<div class="menu-content">
-						<button id="btn-new-game">Nouvelle partie</button>
-						<button id="btn-load-game">Charger la sauvegarde</button>
-						<button id="btn-save-game">Sauvegarder la partie</button>
-						<button id="btn-reset-save">Effacer la sauvegarde</button>
-					</div>
-				</div>
-				<div class="menu-item">
-					<button class="menu-button">Outils</button>
-					<div class="menu-content">
-						<a href="edit.html" class="menu-link">Éditeur de monde</a>
-					</div>
+		<!-- Écran d'accueil -->
+		<div id="start-screen">
+			<div id="start-card">
+				<h1>Marchand de Colonies</h1>
+				<p
+					>Achète à bas prix dans une ville, vends plus cher dans une
+					autre, et fais fortune.</p
+				>
+				<div class="start-buttons">
+					<button id="btn-new-game">Nouvelle partie</button>
+					<button id="btn-load-game">Charger la sauvegarde</button>
+					<button id="btn-reset-save">Effacer la sauvegarde</button>
 				</div>
 			</div>
-		</nav>
+		</div>
 
 		<!-- Écran de jeu -->
 		<div id="game-screen" class="hidden">
+			<header>
+				<div class="title">Marchand de Colonies</div>
+				<div style="display: flex; gap: 0.5rem">
+					<button id="btn-save-game">Sauvegarder la partie</button>
+					<button id="btn-back-menu">Retour au menu</button>
+				</div>
+			</header>
+
 			<main class="layout">
 				<aside id="cities-panel" class="card">
 					<h2>Villes</h2>
@@ -177,31 +179,6 @@
 				},
 			};
 
-			const WORLD_KEY = "merchant_world_config_v1";
-
-			function loadWorldData() {
-				const raw = localStorage.getItem(WORLD_KEY);
-				if (raw) {
-					try {
-						const parsed = JSON.parse(raw);
-						// Validation de base
-						if (parsed && parsed.villes && parsed.ressources && parsed.routes) {
-							console.log("Configuration personnalisée du monde chargée.");
-							return parsed;
-						}
-					} catch (e) {
-						console.error(
-							"Échec du chargement de la configuration, utilisation de celle par défaut.",
-							e
-						);
-					}
-				}
-				console.log("Utilisation de la configuration du monde par défaut.");
-				return defaultWorld;
-			}
-
-			const worldData = loadWorldData();
-
 			let gameState = null;
 			let selectedCityName = null;
 			let travelIntervalId = null;
@@ -209,7 +186,7 @@
 			const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
 
 			function randomCityName() {
-				const keys = Object.keys(worldData.villes);
+				const keys = Object.keys(defaultWorld.villes);
 				return keys[Math.floor(Math.random() * keys.length)];
 			}
 
@@ -286,7 +263,7 @@
 			function createNewGameState() {
 				const startCity = randomCityName();
 				const cargaison = {};
-				worldData.ressources.forEach((r) => (cargaison[r] = 0));
+				defaultWorld.ressources.forEach((r) => (cargaison[r] = 0));
 
 				const joueur = {
 					nom: "Marchand",
@@ -300,9 +277,9 @@
 				joueur.reductionVoyage = computeReduction(joueur.niveau);
 
 				return {
-					ressources: worldData.ressources.slice(),
-					villes: deepClone(worldData.villes),
-					routes: deepClone(worldData.routes),
+					ressources: defaultWorld.ressources.slice(),
+					villes: deepClone(defaultWorld.villes),
+					routes: deepClone(defaultWorld.routes),
 					joueur,
 					voyage: null,
 				};
@@ -750,7 +727,8 @@
 				renderAll();
 			}
 
-			function showGameScreen() {
+			function switchToGameScreen() {
+				document.getElementById("start-screen").classList.add("hidden");
 				document.getElementById("game-screen").classList.remove("hidden");
 				renderAll();
 
@@ -761,6 +739,12 @@
 				}
 			}
 
+			function switchToStartScreen() {
+				document.getElementById("game-screen").classList.add("hidden");
+				document.getElementById("start-screen").classList.remove("hidden");
+				hideTravelOverlay();
+			}
+
 			document.addEventListener("DOMContentLoaded", () => {
 				document.getElementById("travel-overlay").classList.add("hidden");
 
@@ -768,6 +752,7 @@
 				const btnLoad = document.getElementById("btn-load-game");
 				const btnReset = document.getElementById("btn-reset-save");
 				const btnSave = document.getElementById("btn-save-game");
+				const btnBack = document.getElementById("btn-back-menu");
 
 				const existingSave = loadGameFromStorage();
 				if (!existingSave) {
@@ -778,7 +763,7 @@
 					gameState = createNewGameState();
 					selectedCityName = gameState.joueur.villeActuelle;
 					saveGame(false);
-					showGameScreen();
+					switchToGameScreen();
 				});
 
 				btnLoad.addEventListener("click", () => {
@@ -789,18 +774,21 @@
 					}
 					gameState = state;
 					selectedCityName = gameState.joueur.villeActuelle;
-					showGameScreen();
+					switchToGameScreen();
 				});
 
 				btnReset.addEventListener("click", () => {
 					localStorage.removeItem(SAVE_KEY);
 					showMessage("Sauvegarde effacée.");
 					btnLoad.disabled = true;
-					document.getElementById("game-screen").classList.add("hidden");
 				});
 
 				btnSave.addEventListener("click", () => {
 					saveGame(true);
+				});
+
+				btnBack.addEventListener("click", () => {
+					switchToStartScreen();
 				});
 			});
 		</script>
