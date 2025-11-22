@@ -346,6 +346,29 @@ export function renderSaveList() {
 			}
 			item.appendChild(info);
 
+			// Load save data to display stats
+			const rawData = localStorage.getItem(key);
+			if (rawData) {
+				try {
+					const saveData = JSON.parse(rawData);
+					if (saveData && saveData.joueur) {
+						const j = saveData.joueur;
+						const stats = document.createElement("div");
+						stats.className = "save-item-stats";
+						stats.textContent = `Or: ${formatOr(j.or)} | Ville: ${
+							j.villeActuelle
+						} | Niv: ${j.niveau} (XP: ${j.xp})`;
+						item.appendChild(stats);
+					}
+				} catch (e) {
+					console.error(
+						"Impossible de lire les données de sauvegarde:",
+						key,
+						e
+					);
+				}
+			}
+
 			const actions = document.createElement("div");
 			actions.className = "save-item-actions";
 
