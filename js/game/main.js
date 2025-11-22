@@ -132,15 +132,37 @@ export function showGameScreen() {
 
 document.addEventListener("DOMContentLoaded", () => {
     const worldData = loadWorldData();
-    const btnLoad = document.getElementById("btn-load-game");
 
-    document.getElementById("btn-new-game").addEventListener("click", () => {
+    // --- Start Screen Logic ---
+    const startScreen = document.getElementById("start-screen");
+    const startNewGameBtn = document.getElementById("start-new-game");
+    const startLoadGameBtn = document.getElementById("start-load-game");
+
+    if (listSaves().length === 0) {
+        startLoadGameBtn.disabled = true;
+    }
+
+    startNewGameBtn.addEventListener("click", () => {
+        startScreen.classList.add("hidden");
         createNewGameState(worldData);
         saveGame();
         showGameScreen();
     });
 
-    btnLoad.addEventListener("click", () => {
+    startLoadGameBtn.addEventListener("click", () => {
+        showLoadGameModal();
+    });
+
+    // --- In-Game Menu Logic ---
+    document.getElementById("btn-new-game").addEventListener("click", () => {
+        if (confirm("Êtes-vous sûr de vouloir commencer une nouvelle partie ? Votre progression non sauvegardée sera perdue.")) {
+            createNewGameState(worldData);
+            saveGame();
+            showGameScreen();
+        }
+    });
+
+    document.getElementById("btn-load-game").addEventListener("click", () => {
         showLoadGameModal();
     });
 
@@ -149,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const saves = listSaves();
             saves.forEach(key => deleteSave(key));
             showMessage("Toutes les sauvegardes ont été effacées.");
-            document.getElementById("game-screen").classList.add("hidden");
+            window.location.reload(); // Reload to show the start screen
         }
     });
 
@@ -158,10 +180,11 @@ document.addEventListener("DOMContentLoaded", () => {
         showMessage("Partie sauvegardée.");
     });
 
+    // --- Modal Logic ---
     const modal = document.getElementById("load-game-modal");
     modal.querySelector(".close-button").addEventListener("click", hideLoadGameModal);
     window.addEventListener("click", (event) => {
-        if (event.target == modal) {
+        if (event.target === modal) {
             hideLoadGameModal();
         }
     });
