@@ -1,6 +1,6 @@
 // js/game/main.js
-import { gameState, createNewGameState, saveGame, loadGameFromStorage, loadWorldData, setSelectedCityName } from './state.js';
-import { renderAll, showMessage, showTravelOverlay, hideTravelOverlay, updateTravelProgress } from './ui.js';
+import { gameState, createNewGameState, saveGame, loadGameFromStorage, loadWorldData, setSelectedCityName, listSaves, deleteSave } from './state.js';
+import { renderAll, showMessage, showTravelOverlay, hideTravelOverlay, updateTravelProgress, showLoadGameModal, hideLoadGameModal } from './ui.js';
 
 let travelIntervalId = null;
 
@@ -120,7 +120,7 @@ export function finishTravel() {
     renderAll();
 }
 
-function showGameScreen() {
+export function showGameScreen() {
     document.getElementById("game-screen").classList.remove("hidden");
     renderAll();
     if (gameState.voyage) {
@@ -134,33 +134,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const worldData = loadWorldData();
     const btnLoad = document.getElementById("btn-load-game");
 
-    if (!localStorage.getItem("merchant_save_v1")) {
-        btnLoad.disabled = true;
-    }
-
     document.getElementById("btn-new-game").addEventListener("click", () => {
         createNewGameState(worldData);
         saveGame(false);
         showGameScreen();
-        btnLoad.disabled = false;
     });
 
     btnLoad.addEventListener("click", () => {
-        if (loadGameFromStorage()) {
-            showGameScreen();
-        } else {
-            showMessage("Aucune sauvegarde trouvée.");
-        }
+        showLoadGameModal();
     });
 
     document.getElementById("btn-reset-save").addEventListener("click", () => {
-        localStorage.removeItem("merchant_save_v1");
-        showMessage("Sauvegarde effacée.");
-        btnLoad.disabled = true;
-        document.getElementById("game-screen").classList.add("hidden");
+        if (confirm("Êtes-vous sûr de vouloir effacer TOUTES les sauvegardes ? Cette action est irréversible.")) {
+            const saves = listSaves();
+            saves.forEach(key => deleteSave(key));
+            showMessage("Toutes les sauvegardes ont été effacées.");
+            document.getElementById("game-screen").classList.add("hidden");
+        }
     });
 
     document.getElementById("btn-save-game").addEventListener("click", () => {
         saveGame(true);
+    });
+
+    const modal = document.getElementById("load-game-modal");
+    modal.querySelector(".close-button").addEventListener("click", hideLoadGameModal);
+    window.addEventListener("click", (event) => {
+        if (event.target == modal) {
+            hideLoadGameModal();
+        }
     });
 });

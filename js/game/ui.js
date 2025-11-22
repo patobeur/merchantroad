@@ -1,6 +1,6 @@
 // js/game/ui.js
-import { gameState, selectedCityName, setSelectedCityName } from './state.js';
-import { doTrade, startTravel, finishTravel } from './main.js';
+import { gameState, selectedCityName, setSelectedCityName, listSaves, loadGameFromStorage, deleteSave } from './state.js';
+import { doTrade, startTravel, finishTravel, showGameScreen } from './main.js';
 
 let travelIntervalId = null;
 
@@ -298,4 +298,65 @@ export function updateTravelProgress() {
         }
         finishTravel();
     }
+}
+
+export function renderSaveList() {
+    const container = document.getElementById("save-list-container");
+    clearElement(container);
+    const saves = listSaves();
+
+    if (saves.length === 0) {
+        container.textContent = "Aucune sauvegarde trouvée.";
+        return;
+    }
+
+    saves.sort().reverse().forEach(key => {
+        const item = document.createElement("div");
+        item.className = "save-item";
+
+        const info = document.createElement("div");
+        info.className = "save-item-info";
+        if (key === "merchant_save_v1") {
+            info.textContent = "Ancienne sauvegarde (Legacy Save)";
+        } else {
+            const date = new Date(parseInt(key.split('_').pop())).toLocaleString('fr-FR');
+            info.textContent = `Sauvegarde du ${date}`;
+        }
+        item.appendChild(info);
+
+        const actions = document.createElement("div");
+        actions.className = "save-item-actions";
+
+        const btnLoad = document.createElement("button");
+        btnLoad.textContent = "Charger";
+        btnLoad.addEventListener("click", () => {
+            if (loadGameFromStorage(key)) {
+                hideLoadGameModal();
+                showGameScreen();
+            }
+        });
+        actions.appendChild(btnLoad);
+
+        const btnDelete = document.createElement("button");
+        btnDelete.textContent = "Effacer";
+        btnDelete.addEventListener("click", () => {
+            if (confirm("Êtes-vous sûr de vouloir effacer cette sauvegarde ?")) {
+                deleteSave(key);
+                renderSaveList();
+            }
+        });
+        actions.appendChild(btnDelete);
+
+        item.appendChild(actions);
+        container.appendChild(item);
+    });
+}
+
+export function showLoadGameModal() {
+    renderSaveList();
+    document.getElementById("load-game-modal").classList.remove("hidden");
+}
+
+export function hideLoadGameModal() {
+    document.getElementById("load-game-modal").classList.add("hidden");
 }

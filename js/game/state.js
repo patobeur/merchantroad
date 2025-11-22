@@ -1,7 +1,8 @@
 // js/game/state.js
 import { defaultWorld } from './data.js';
+import { showMessage } from './ui.js';
 
-const SAVE_KEY = "merchant_save_v1";
+const SAVE_PREFIX = "merchant_save_";
 const WORLD_KEY = "merchant_world_config_v1";
 
 export let gameState = null;
@@ -73,15 +74,15 @@ export function createNewGameState(worldData) {
 // Save and Load game state
 export function saveGame(showMsg = true) {
     if (!gameState) return;
-    localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+    const key = `${SAVE_PREFIX}${Date.now()}`;
+    localStorage.setItem(key, JSON.stringify(gameState));
     if (showMsg) {
-        // This function will need to be imported or passed in
         showMessage("Partie sauvegardée.");
     }
 }
 
-export function loadGameFromStorage() {
-    const raw = localStorage.getItem(SAVE_KEY);
+export function loadGameFromStorage(key) {
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     try {
         const state = JSON.parse(raw);
@@ -111,4 +112,19 @@ export function loadGameFromStorage() {
         console.error("Error loading game:", e);
         return null;
     }
+}
+
+export function listSaves() {
+    const saves = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith(SAVE_PREFIX) || key === "merchant_save_v1") {
+            saves.push(key);
+        }
+    }
+    return saves;
+}
+
+export function deleteSave(key) {
+	localStorage.removeItem(key);
 }
