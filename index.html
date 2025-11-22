@@ -32,6 +32,16 @@
 		</nav>
 
 		<!-- Écran de jeu -->
+		<div id="start-screen">
+			<div class="card" id="start-card">
+				<h1>Marchand de Colonies</h1>
+				<p>Un jeu de commerce et de voyage.</p>
+				<div class="start-buttons">
+					<button id="start-new-game">Nouvelle partie</button>
+					<button id="start-load-game">Charger une partie</button>
+				</div>
+			</div>
+		</div>
 		<div id="game-screen" class="hidden">
 			<main class="layout">
 				<aside id="cities-panel" class="card">
@@ -73,6 +83,15 @@
 				<div class="progress-bar">
 					<div class="progress-bar-inner" id="travel-progress"></div>
 				</div>
+			</div>
+		</div>
+
+		<!-- Modal de chargement de partie -->
+		<div id="load-game-modal" class="modal hidden">
+			<div class="modal-content">
+				<span class="close-button">&times;</span>
+				<h2>Charger une partie</h2>
+				<div id="save-list-container"></div>
 			</div>
 		</div>
 
