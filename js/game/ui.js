@@ -35,7 +35,6 @@ export function renderAll() {
 		setSelectedCityName(gameState.joueur.villeActuelle);
 	}
 	renderPlayerPanel();
-	renderCitiesList();
 	renderCityDetails(selectedCityName);
 	renderTravelPanel();
 }
@@ -88,25 +87,6 @@ function renderPlayerPanel() {
 	});
 
 	cargoDiv.appendChild(ul);
-}
-
-function renderCitiesList() {
-	const list = document.getElementById("cities-list");
-	clearElement(list);
-	const current = gameState.joueur.villeActuelle;
-
-	Object.keys(gameState.villes).forEach((name) => {
-		const btn = document.createElement("button");
-		btn.className = "city-btn";
-		btn.textContent = name;
-		if (name === current) btn.classList.add("current-city");
-		if (name === selectedCityName) btn.classList.add("selected-city");
-		btn.addEventListener("click", () => {
-			setSelectedCityName(name);
-			renderAll();
-		});
-		list.appendChild(btn);
-	});
 }
 
 function renderCityDetails(cityName) {
@@ -226,51 +206,92 @@ function renderTravelPanel() {
 	const routesFrom = gameState.routes[j.villeActuelle] || {};
 	const isTraveling = !!gameState.voyage;
 
+	// --- Card for Current City ---
+	const currentCityWrap = document.createElement("div");
+	currentCityWrap.className = "travel-item";
+
+	const currentCityStrong = document.createElement("strong");
+	currentCityStrong.textContent = j.villeActuelle;
+	currentCityWrap.appendChild(currentCityStrong);
+
+	const currentCityLineTime = document.createElement("div");
+	currentCityLineTime.textContent = `Temps : 0 s`;
+	const currentCityLineCost = document.createElement("div");
+	currentCityLineCost.textContent = `Coût : vous êtes ici`;
+
+	currentCityWrap.appendChild(currentCityLineTime);
+	currentCityWrap.appendChild(currentCityLineCost);
+
+	const currentCityLineBtn = document.createElement("div");
+	currentCityLineBtn.style.marginTop = ".3rem";
+	const currentCityBtnPrices = document.createElement("button");
+	currentCityBtnPrices.textContent = "Voir les prix";
+	currentCityBtnPrices.addEventListener("click", () => {
+		setSelectedCityName(j.villeActuelle);
+		renderAll();
+	});
+	currentCityLineBtn.appendChild(currentCityBtnPrices);
+	currentCityWrap.appendChild(currentCityLineBtn);
+
+	panel.appendChild(currentCityWrap);
+
+	// --- Cards for Destinations ---
 	const routeNames = Object.keys(routesFrom);
 	if (routeNames.length === 0) {
 		const div = document.createElement("div");
-		div.textContent = "Aucune route depuis cette ville.";
+		div.textContent = "Aucune autre destination depuis cette ville.";
 		panel.appendChild(div);
-		return;
-	}
+	} else {
+		routeNames.forEach((dest) => {
+			const route = routesFrom[dest];
+			const wrap = document.createElement("div");
+			wrap.className = "travel-item";
 
-	routeNames.forEach((dest) => {
-		const route = routesFrom[dest];
-		const wrap = document.createElement("div");
-		wrap.className = "travel-item";
+			const strong = document.createElement("strong");
+			strong.textContent = dest;
+			wrap.appendChild(strong);
 
-		const strong = document.createElement("strong");
-		strong.textContent = dest;
-		wrap.appendChild(strong);
+			const tempsSec = (route.temps / 1000).toFixed(1);
+			const coutBase = route.cout;
+			const coutReel = Math.round(
+				coutBase * (1 - j.reductionVoyage)
+			);
 
-		const tempsSec = (route.temps / 1000).toFixed(1);
-		const coutBase = route.cout;
-		const coutReel = Math.round(coutBase * (1 - j.reductionVoyage));
+			const lineTime = document.createElement("div");
+			lineTime.textContent = `Temps : ${tempsSec} s`;
+			const lineCost = document.createElement("div");
+			lineCost.textContent = `Coût : ${coutReel.toLocaleString(
+				"fr-FR"
+			)} or (base ${coutBase})`;
 
-		const lineTime = document.createElement("div");
-		lineTime.textContent = `Temps : ${tempsSec} s`;
-		const lineCost = document.createElement("div");
-		lineCost.textContent = `Coût : ${coutReel.toLocaleString(
-			"fr-FR"
-		)} or (base ${coutBase})`;
+			wrap.appendChild(lineTime);
+			wrap.appendChild(lineCost);
 
-		wrap.appendChild(lineTime);
-		wrap.appendChild(lineCost);
+			const lineBtn = document.createElement("div");
+			lineBtn.style.marginTop = ".3rem";
 
-		const lineBtn = document.createElement("div");
-		lineBtn.style.marginTop = ".3rem";
-		const btn = document.createElement("button");
-		btn.textContent = "Voyager";
-		btn.dataset.dest = dest;
-		if (isTraveling) btn.disabled = true;
-		btn.addEventListener("click", () => {
-			startTravel(dest);
+			const btnPrices = document.createElement("button");
+			btnPrices.textContent = "Voir les prix";
+			btnPrices.addEventListener("click", () => {
+				setSelectedCityName(dest);
+				renderAll();
+			});
+			lineBtn.appendChild(btnPrices);
+
+			const btnTravel = document.createElement("button");
+			btnTravel.textContent = "Voyager";
+			btnTravel.dataset.dest = dest;
+			if (isTraveling) btnTravel.disabled = true;
+			btnTravel.addEventListener("click", () => {
+				startTravel(dest);
+			});
+			lineBtn.appendChild(btnTravel);
+
+			wrap.appendChild(lineBtn);
+
+			panel.appendChild(wrap);
 		});
-		lineBtn.appendChild(btn);
-		wrap.appendChild(lineBtn);
-
-		panel.appendChild(wrap);
-	});
+	}
 }
 
 export function showTravelOverlay() {

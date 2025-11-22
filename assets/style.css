@@ -92,38 +92,9 @@ header .title {
 main.layout {
 	flex: 1;
 	display: grid;
-	grid-template-columns: 230px 1fr;
+	grid-template-columns: 1fr;
 	gap: 1rem;
 	padding: 1rem;
-}
-
-aside#cities-panel {
-	background: #181818;
-	border-radius: 8px;
-	padding: 0.8rem;
-	border: 1px solid #333;
-}
-#cities-list {
-	display: flex;
-	flex-direction: column;
-	gap: 0.4rem;
-	margin-top: 0.6rem;
-}
-.city-btn {
-	width: 100%;
-	text-align: left;
-	justify-content: flex-start;
-	display: flex;
-	align-items: center;
-	gap: 0.4rem;
-	background: #252525;
-}
-.city-btn.current-city {
-	border: 1px solid #ffd54f;
-	background: #3b2f0b;
-}
-.city-btn.selected-city {
-	outline: 1px solid #4fc3f7;
 }
 
 #main-panel {
