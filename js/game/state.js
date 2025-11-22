@@ -1,6 +1,5 @@
 // js/game/state.js
 import { defaultWorld } from './data.js';
-import { showMessage } from './ui.js';
 
 const SAVE_PREFIX = "merchant_save_";
 const WORLD_KEY = "merchant_world_config_v1";
@@ -72,13 +71,10 @@ export function createNewGameState(worldData) {
 }
 
 // Save and Load game state
-export function saveGame(showMsg = true) {
+export function saveGame() {
     if (!gameState) return;
     const key = `${SAVE_PREFIX}${Date.now()}`;
     localStorage.setItem(key, JSON.stringify(gameState));
-    if (showMsg) {
-        showMessage("Partie sauvegardée.");
-    }
 }
 
 export function loadGameFromStorage(key) {

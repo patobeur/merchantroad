@@ -63,7 +63,7 @@ export function doTrade(type, res, qtyStr) {
         showMessage(`Vente de ${qty} ${res}.`);
     }
 
-    saveGame(false);
+    saveGame();
     renderAll();
 }
 
@@ -100,7 +100,7 @@ export function startTravel(destination) {
         startTime: now,
     };
 
-    saveGame(false);
+    saveGame();
     showTravelOverlay();
 
     if (travelIntervalId) clearInterval(travelIntervalId);
@@ -115,7 +115,7 @@ export function finishTravel() {
     gameState.voyage = null;
     setSelectedCityName(v.arrivee);
     hideTravelOverlay();
-    saveGame(false);
+    saveGame();
     showMessage(`Arrivé à ${v.arrivee}.`);
     renderAll();
 }
@@ -136,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("btn-new-game").addEventListener("click", () => {
         createNewGameState(worldData);
-        saveGame(false);
+        saveGame();
         showGameScreen();
     });
 
@@ -154,7 +154,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     document.getElementById("btn-save-game").addEventListener("click", () => {
-        saveGame(true);
+        saveGame();
+        showMessage("Partie sauvegardée.");
     });
 
     const modal = document.getElementById("load-game-modal");
