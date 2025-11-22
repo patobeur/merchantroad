@@ -353,6 +353,7 @@ export function renderSaveList() {
 			btnLoad.textContent = "Charger";
 			btnLoad.addEventListener("click", () => {
 				if (loadGameFromStorage(key)) {
+					hideStartScreen();
 					hideLoadGameModal();
 					showGameScreen();
 				}
@@ -383,4 +384,8 @@ export function showLoadGameModal() {
 
 export function hideLoadGameModal() {
 	document.getElementById("load-game-modal").classList.add("hidden");
+}
+
+export function hideStartScreen() {
+	document.getElementById("start-screen").classList.add("hidden");
 }
