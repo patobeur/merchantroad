@@ -2,7 +2,7 @@
 <html lang="fr">
 	<head>
 		<meta charset="UTF-8" />
-		<title>Éditeur de carte – Marchand de Colonies</title>
+		<title>Éditeur de carte – Space Dealer</title>
 		<style>
 			* {
 				box-sizing: border-box;
@@ -190,7 +190,7 @@
 		<div id="message-bar"></div>
 
 		<header>
-			<h1>Éditeur de carte – Marchand de Colonies</h1>
+			<h1>Éditeur de carte – Space Dealer</h1>
 			<div>
 				<button id="btn-new-config">Nouvelle configuration</button>
 				<button id="btn-load-config">Charger configuration</button>
@@ -519,7 +519,12 @@
 				const gy = Math.floor(y / cellH);
 
 				// Empêche le placement hors des limites de la grille
-				if (gx < 0 || gx >= meta.gridWidth || gy < 0 || gy >= meta.gridHeight) {
+				if (
+					gx < 0 ||
+					gx >= meta.gridWidth ||
+					gy < 0 ||
+					gy >= meta.gridHeight
+				) {
 					return; // Clic en dehors de la grille
 				}
 

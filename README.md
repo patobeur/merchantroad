@@ -1,4 +1,4 @@
-# Marchand de Colonies
+# Space Dealer
 
 Petit jeu de commerce de ressources entre villes, jouable directement dans le navigateur (HTML + JavaScript vanilla, sans framework).  
 Le joueur incarne un marchand qui achète et revend des marchandises entre plusieurs villes pour faire fortune.
