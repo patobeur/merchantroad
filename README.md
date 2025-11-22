@@ -1,42 +1,116 @@
 # Space Dealer
 
-Petit jeu de commerce de ressources entre villes, jouable directement dans le navigateur (HTML + JavaScript vanilla, sans framework).  
-Le joueur incarne un marchand qui achète et revend des marchandises entre plusieurs villes pour faire fortune.
+Petit jeu de commerce de ressources entre planetes, jouable directement dans le navigateur (HTML + JavaScript vanilla, sans framework).  
+Le joueur incarne un marchand qui achète et revend des marchandises entre plusieurs planetes pour faire fortune.
+il monte en niveau et pourras acheter un autre vaisseau avec de l'or.
 
 ---
 
 ## Fonctionnalités
 
-### ✅ Villes & ressources
+### ✅ planetes & ressources
 
--  4 villes de départ : **Ville_A**, **Ville_B**, **Ville_C**, **Ville_D**.
--  10 ressources :
-   -  Cacao
-   -  Coton
-   -  Pierres précieuses
-   -  Raisins
-   -  Poudre à canon
-   -  Métal
-   -  Rations
-   -  Pimenter
-   -  Canne à sucre
-   -  Tabac vieilli
+## planetes / stations (monde SF)
+
+pour l'instant seulement 5
+
+1. **Nébuloport Sigma**
+2. **Cité-Anneau d’Helios**
+3. **Kryon Prime**
+4. **Bazar d’Orbital-9**
+5. **Nova-Zéphyr**
+6. **Colonnie de Vanta IX**
+7. **Dôme de Lumenia**
+8. **Astreport Miridal**
+9. **Spatio-Havre d’Ydris**
+10.   **Cité-Forge d’Obsidia**
+11.   **Plateforme Draconis-Delta**
+12.   **Port-Brume d’Aurora-3**
+13.   **Caravansérail d’Axion**
+14.   **Colonie-Ruche de Sélénith**
+15.   **Station Libre de Tesseract**
+16.   **Arcologie d’Ultravion**
+17.   **Hub Quantique de Myrr IX**
+18.   **Cité-Nexus d’Azkar**
+19.   **Chantier Orbital de K-47**
+20.   **Port-Nébuleuse d’Elara**
+
+---
+
+## Ressources à marchander
+
+Les planete devrait avoir chacune 2 à 3 ressources principale quelles produisent et en tout 8 ressources.
+
+### Métaux & minerais futuristes
+
+-  Fer d’astéroïde brut
+-  Titane stellaire
+-  Iridium noir
+-  Néonium cristallisé
+-  Alliage quantique Q-17
+-  Poussière de comète raffinée
+-  Obsidium synthétique
+-  Plasma solide
+
+### Énergies & carburants
+
+-  Cristaux d’hyperflux
+-  Noyaux d’antimatière stabilisée
+-  Cellules à fusion froide
+-  Gaz solaire compressé
+-  Batteries à flux sombre
+-  Essence de trou noir
+
+### Biotech & organique
+
+-  Algues nutritives d’Ultravion
+-  Sérum régénérant alpha
+-  Gênes de xéno-faune
+-  Épices psychotropes de Myrr IX
+-  Graines stellaires terraformantes
+-  Carne synthétique premium
+
+### Technologie & données
+
+-  Modules cybernétiques militaires
+-  Circuits neuraux liquides
+-  Datacubes cryptés
+-  IA de contrebande « boîte noire »
+-  Matrices holo-divertissement
+-  Nanodrones utilitaires
+
+### Marchandises exotiques & luxe
+
+-  Tapis gravitationnels
+-  Bijoux de cristaux chantants
+-  Parfums de brume astrale
+-  Art fractal luminescent
+-  Reliques pré-humaines
+-  Animaux de compagnie holographiques
+
 -  Pour chaque ville et ressource :
    -  **Quantité en stock**
-   -  **Prix d’achat** de la ressource dans cette ville
+   -  **Certainne ressources locales sont produitent toutes les 15 minutes si un stock min est atteint**
+   -  **Prix d’achat** de la ressource dans cette ville en fonction des stock
+   -  **Prix de vente** de la ressource dans cette ville en fonction des stock
+   -  **position dans l'espace**
+   -  etc...
 
 Les données de départ sont codées en dur dans `defaultWorld` et recopiées dans `localStorage` lors de la création d’une nouvelle partie.
+a l'avenir le tout sera dans des table php et chaque ville auras sa fiches avec nom, chaque ressources, stock, prix par ressources, taux de production, position x,y,z, etc....
+ville et ressources auront une table pivot.
 
 ---
 
 ### ✅ Joueur
 
--  Nom : “Marchand”
--  Ville de départ : **tirée au hasard** parmi les villes existantes
+-  Nom : “Billy bob”
+-  Planete de départ : **tirée au hasard** parmi les Planetes existantes
 -  Commence avec :
    -  **1000 or**
    -  **Cargaison vide**
    -  **Niveau 1**, **0 XP**
+   -  **Vaisseau cargot categorie Niveau 1**, **3 emplacement de stockage (100 unité par emplacement)**
 -  Gagne de l’XP en **achetant** ou **vendant** des ressources  
    (par exemple : +1 XP par unité échangée)
 -  Le **niveau** dépend de l’XP (100 XP par niveau)
@@ -48,32 +122,34 @@ Les données de départ sont codées en dur dans `defaultWorld` et recopiées da
 
 ### ✅ Commerce
 
--  On ne peut commercer **que dans la ville actuelle** du joueur.
+-  On ne peut commercer **que dans la Planete actuelle** du joueur.
 -  Interface :
    -  Choix de la ressource
    -  Choix de la quantité
-   -  Boutons **Acheter** / **Vendre**
+   -  Boutons **Acheter** / **Vendre** / **max (met a jour le champs avec le max achetable)**
 -  Achat :
    -  Vérification du **stock de la ville**
    -  Vérification de l’**or du joueur**
+   -  Vérification de l’**espace de stockage disponible du joueur**
    -  Mise à jour :
-      -  stock ville ↓
+      -  stock Planete ↓
       -  cargaison joueur ↑
       -  or joueur ↓
 -  Vente :
    -  Vérification de la **cargaison du joueur**
    -  Mise à jour :
-      -  stock ville ↑
+      -  stock Planete ↑
       -  cargaison joueur ↓
       -  or joueur ↑
 
 Chaque transaction sauvegarde immédiatement la partie dans `localStorage`.
+à l'avenir en base de données
 
 ---
 
-### ✅ Voyage entre villes
+### ✅ Voyage entre Planete
 
--  Les villes sont reliées par des **routes** définies dans `defaultWorld.routes`.
+-  Les Planetev sont reliées par des **routes** définies dans `defaultWorld.routes`.
 -  Pour chaque route :  
    `temps` (durée du trajet en millisecondes) + `cout` (coût de base en or).
 -  Dans l’onglet **Voyage**, la liste des destinations possibles depuis la ville actuelle est affichée avec :
@@ -82,7 +158,7 @@ Chaque transaction sauvegarde immédiatement la partie dans `localStorage`.
 -  Un bouton **Voyager** permet de lancer un trajet :
    -  L’or du joueur est débité immédiatement
    -  Le jeu enregistre un objet `voyage` dans l’état :
-      -  ville de départ / d’arrivée
+      -  Planete de départ / d’arrivée
       -  durée totale
       -  heure de départ
    -  Une **fenêtre modale** affiche :
@@ -92,7 +168,7 @@ Chaque transaction sauvegarde immédiatement la partie dans `localStorage`.
       -  commerce désactivé
       -  lancement d’un `setInterval` qui met à jour la progression
    -  À la fin :
-      -  ville actuelle = ville d’arrivée
+      -  Planete actuelle = Planete d’arrivée
       -  l’objet `voyage` est effacé
       -  la modale est cachée
 
@@ -113,7 +189,7 @@ Tout se fait via `localStorage` :
 Interface :
 
 -  **Nouvelle partie**  
-   → crée un nouvel état de jeu à partir de `defaultWorld` et écrase la sauvegarde.
+   → crée un nouvel état de jeu à partir de `defaultWorld`
 -  **Charger la sauvegarde**  
    → lit l’état depuis `localStorage` (si présent).
 -  **Effacer la sauvegarde**  
@@ -150,14 +226,14 @@ Interface :
    -  **Charger la sauvegarde** : reprend la dernière partie (si elle existe).
    -  **Effacer la sauvegarde** : remet le jeu à zéro.
 -  Dans **l’écran de jeu** :
-   -  **Panneau Villes** : clic sur une ville → affiche ses stocks/prix (ville sélectionnée).
-   -  **Fiche du joueur** : affiche or, niveau, XP, ville actuelle, réduction de coût.
+   -  **Panneau Planete** : clic sur une Planete → affiche ses stocks/prix (Planete sélectionnée).
+   -  **Fiche du joueur** : affiche or, niveau, XP, Planete actuelle, réduction de coût.
    -  **Cargaison** : liste les ressources possédées par le joueur.
-   -  **Ville sélectionnée** : tableau des stocks/prix de la ville choisie.
+   -  **Planete sélectionnée** : tableau des stocks/prix de la Planete choisie.
    -  **Commerce** :
       -  choisir ressource + quantité, cliquer sur **Acheter** ou **Vendre**.
    -  **Voyage** :
-      -  cliquer sur un bouton **Voyager** vers une autre ville.
+      -  cliquer sur un bouton **Voyager** vers une autre Planete.
       -  observer la barre de progression.
    -  **Sauvegarder la partie** : enregistre immédiatement dans `localStorage`.
    -  **Retour au menu** : revient à l’écran d’accueil (la partie reste dans `localStorage`).
@@ -184,15 +260,15 @@ Tout est dans `index.html` :
 
 ## Limites actuelles / pistes d’évolution
 
--  Pas encore d’**éditeur de carte** (positions des villes en pixel art).
--  Pas encore d’**éditeur de villes / ressources** dans l’interface (modif des prix, quantités, ajout/suppression de villes).
+-  Pas encore d’**éditeur de carte** (positions des Planete en pixel art).
+-  Pas encore d’**éditeur de Planete / ressources** dans l’interface (modif des prix, quantités, ajout/suppression de villes).
 -  Pas de gestion de **difficulté** ni d’objectifs (score, nombre de jours, etc.).
 -  Pas de graphique ou d’historique des prix.
 
 Idées pour la suite :
 
 -  Écran “Éditeur” pour :
-   -  placer les villes sur une petite carte en pixels,
+   -  placer les Planete sur une petite carte en pixels,
    -  modifier leurs ressources,
    -  recalculer automatiquement les temps/coûts de voyage selon la distance.
 -  Gestion de plusieurs **slots de sauvegarde**.
