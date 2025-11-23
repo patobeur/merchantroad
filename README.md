@@ -142,8 +142,7 @@ ville et ressources auront une table pivot.
       -  cargaison joueur ↓
       -  or joueur ↑
 
-Chaque transaction sauvegarde immédiatement la partie dans `localStorage`.
-à l'avenir en base de données
+Chaque transaction sauvegarde immédiatement la partie en base de données.
 
 ---
 
@@ -178,24 +177,16 @@ Un mécanisme de **sécurité au chargement** vérifie si un voyage sauvegardé 
 
 ### ✅ Sauvegarde / chargement
 
-Tout se fait via `localStorage` :
-
--  Clé utilisée : `merchant_save_v1`
--  Contenu :
-   -  configuration des ressources et villes modifiées
-   -  état du joueur
-   -  éventuel voyage en cours
-
-Interface :
+Tout se fait via une base de données MySQL et une API PHP.
 
 -  **Nouvelle partie**  
    → crée un nouvel état de jeu à partir de `defaultWorld`
 -  **Charger la sauvegarde**  
-   → lit l’état depuis `localStorage` (si présent).
+   → lit l’état depuis la base de données.
 -  **Effacer la sauvegarde**  
-   → supprime la clé de sauvegarde dans `localStorage`.
+   → supprime la sauvegarde de la base de données.
 -  En jeu, bouton **“Sauvegarder la partie”** :  
-   → force l’écriture de l’état actuel dans `localStorage`.
+   → force l’écriture de l’état actuel dans la base de données.
 
 ---
 
@@ -203,19 +194,19 @@ Interface :
 
 ### 1. Pré-requis
 
--  Un simple navigateur moderne suffit (Chrome, Firefox, Edge…).
--  Aucune dépendance, aucun bundler : un seul fichier `index.html`.
+- Un navigateur moderne (Chrome, Firefox, Edge…).
+- Un serveur web local avec PHP et MySQL.
 
 ### 2. Installation
 
-1. Placer `index.html` dans un dossier.
-2. (Optionnel) Lancer un petit serveur local si tu veux le live-reload :
-
-   -  Avec VS Code : extension **Live Server**
-   -  Ou en Python :  
-      `python -m http.server` (puis ouvrir `http://localhost:8000`)
-
-3. Ouvrir `index.html` dans le navigateur.
+1.  **Configurer le serveur web**
+    -   Assurez-vous que votre serveur web (par exemple, Apache ou Nginx) est en cours d'exécution et configuré pour servir des fichiers PHP.
+2.  **Configurer la base de données**
+    -   Créez une nouvelle base de données MySQL nommée `merchant_game`.
+    -   Copiez `php/config.php.example` vers `php/config.php` et mettez à jour les informations de connexion à la base de données.
+    -   Exécutez le script `php/setup.php` pour créer la table `saves`. Vous pouvez le faire en ligne de commande (`php php/setup.php`) ou en y accédant via votre navigateur.
+3.  **Lancer le jeu**
+    -   Ouvrez le projet dans votre navigateur, en pointant vers la racine du projet.
 
 ---
 
@@ -235,26 +226,24 @@ Interface :
    -  **Voyage** :
       -  cliquer sur un bouton **Voyager** vers une autre Planete.
       -  observer la barre de progression.
-   -  **Sauvegarder la partie** : enregistre immédiatement dans `localStorage`.
-   -  **Retour au menu** : revient à l’écran d’accueil (la partie reste dans `localStorage`).
+   -  **Sauvegarder la partie** : enregistre immédiatement dans la base de données.
+   -  **Retour au menu** : revient à l’écran d’accueil.
 
 ---
 
 ## Structure du code
 
-Tout est dans `index.html` :
-
 -  **HTML** : structure de base (écran d’accueil, écran de jeu, overlay de voyage).
 -  **CSS** : style sombre, layout en grille pour le jeu, modale de voyage, barre de progression.
 -  **JavaScript** :
-   -  `defaultWorld` : configuration initiale des villes, ressources et routes.
-   -  `gameState` : état courant (joueur, villes, routes, voyage).
-   -  Fonctions principales :
-      -  création d’une nouvelle partie (`createNewGameState`)
-      -  sauvegarde / chargement (`saveGame`, `loadGameFromStorage`)
-      -  rendu de l’UI (`renderPlayerPanel`, `renderCitiesList`, `renderCityDetails`, `renderTradePanel`, `renderTravelPanel`)
-      -  gestion du commerce (`doTrade`, `addXp`)
-      -  gestion du voyage (`startTravel`, `updateTravelProgress`, `finishTravel`, overlay)
+   -  `js/game/data.js` : configuration initiale des villes, ressources et routes.
+   -  `js/game/state.js` : état courant (joueur, villes, routes, voyage) et communication avec l'API.
+   -  `js/game/ui.js` : rendu de l’UI.
+   -  `js/game/main.js` : logique du jeu (commerce, voyage, etc.).
+-  **PHP** :
+   - `php/api.php`: API pour la gestion des sauvegardes.
+   - `php/config.php`: Configuration de la base de données (ignoré par git).
+   - `php/setup.php`: Script pour la création de la base de données.
 
 ---
 

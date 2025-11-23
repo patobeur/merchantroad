@@ -1,7 +1,7 @@
 // js/game/state.js
 import { defaultWorld } from './data.js';
 
-const SAVE_PREFIX = "merchant_save_";
+const API_URL = 'php/api.php';
 const WORLD_KEY = "merchant_world_config_v1";
 
 export let gameState = null;
@@ -14,38 +14,29 @@ export function setSelectedCityName(name) {
 // Deep clone utility
 const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
 
-// Load world data from localStorage or use default
+// Load world data from localStorage or use default (remains unchanged)
 export function loadWorldData() {
     const raw = localStorage.getItem(WORLD_KEY);
     if (raw) {
         try {
             const parsed = JSON.parse(raw);
             if (parsed && parsed.villes && parsed.ressources && parsed.routes) {
-                console.log("Custom world configuration loaded.");
                 return parsed;
             }
-        } catch (e) {
-            console.error("Failed to load world configuration, using default.", e);
-        }
+        } catch (e) { console.error("Failed to load world config", e); }
     }
-    console.log("Using default world configuration.");
     return defaultWorld;
 }
 
-// Random city name utility
-function randomCityName(worldData) {
-    const keys = Object.keys(worldData.villes);
-    return keys[Math.floor(Math.random() * keys.length)];
-}
-
-// Compute travel reduction based on level
 function computeReduction(level) {
-    return Math.min(0.5, level * 0.02); // 2% per level, max 50%
+    return Math.min(0.5, level * 0.02);
 }
 
-// Create a new game state
-export function createNewGameState(worldData) {
-    const startCity = randomCityName(worldData);
+// --- Modified Functions ---
+
+// Creates a new game state OBJECT, but doesn't save it yet.
+export function createNewGameStateObject(worldData) {
+    const startCity = Object.keys(worldData.villes)[0];
     const cargaison = {};
     worldData.ressources.forEach((r) => (cargaison[r] = 0));
 
@@ -61,6 +52,7 @@ export function createNewGameState(worldData) {
     joueur.reductionVoyage = computeReduction(joueur.niveau);
 
     gameState = {
+        save_id: null, // save_id will be set on the first save
         ressources: worldData.ressources.slice(),
         villes: deepClone(worldData.villes),
         routes: deepClone(worldData.routes),
@@ -68,59 +60,74 @@ export function createNewGameState(worldData) {
         voyage: null,
     };
     selectedCityName = gameState.joueur.villeActuelle;
+    return gameState;
 }
 
-// Save and Load game state
-export function saveGame() {
+export async function saveGame() {
     if (!gameState) return;
-    const key = `${SAVE_PREFIX}${Date.now()}`;
-    localStorage.setItem(key, JSON.stringify(gameState));
+    try {
+        const response = await fetch(`${API_URL}?action=save_game`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(gameState),
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const result = await response.json();
+        if (result.save_id) {
+            gameState.save_id = result.save_id; // Update the save_id on the client
+        }
+        console.log('Game saved:', result);
+    } catch (error) {
+        console.error('Error saving game:', error);
+    }
 }
 
-export function loadGameFromStorage(key) {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
+export async function loadGameFromStorage(id) {
     try {
-        const state = JSON.parse(raw);
-        // Clean up any malformed or finished voyages
-        if (state.voyage) {
-            const v = state.voyage;
-            const now = Date.now();
-            if (!v.startTime || !v.tempsTotal || isNaN(v.startTime) || isNaN(v.tempsTotal)) {
-                if (v.arrivee && state.joueur) state.joueur.villeActuelle = v.arrivee;
-                state.voyage = null;
-            } else {
-                const elapsed = now - v.startTime;
-                if (elapsed >= v.tempsTotal) {
-                    if (v.arrivee && state.joueur) state.joueur.villeActuelle = v.arrivee;
-                    state.voyage = null;
-                }
-            }
-        }
-        if (!state.joueur) return null;
+        const response = await fetch(`${API_URL}?action=load_game&id=${id}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const state = await response.json();
+
+        // The loaded state needs to be complemented with static data
+        const worldData = loadWorldData();
+        state.ressources = worldData.ressources.slice();
+        state.routes = deepClone(worldData.routes);
+
         if (!state.joueur.niveau) state.joueur.niveau = 1;
         state.joueur.reductionVoyage = computeReduction(state.joueur.niveau);
 
         gameState = state;
         selectedCityName = gameState.joueur.villeActuelle;
         return state;
-    } catch (e) {
-        console.error("Error loading game:", e);
+    } catch (error) {
+        console.error('Error loading game:', error);
         return null;
     }
 }
 
-export function listSaves() {
-    const saves = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith(SAVE_PREFIX) || key === "merchant_save_v1") {
-            saves.push(key);
-        }
+export async function listSaves() {
+    try {
+        const response = await fetch(`${API_URL}?action=list_saves`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Error listing saves:', error);
+        return [];
     }
-    return saves;
 }
 
-export function deleteSave(key) {
-	localStorage.removeItem(key);
+export async function deleteSave(id) {
+    try {
+        const response = await fetch(`${API_URL}?action=delete_save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id }),
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        console.log('Save deleted:', await response.json());
+    } catch (error) {
+        console.error('Error deleting save:', error);
+    }
 }
