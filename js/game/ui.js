@@ -338,87 +338,70 @@ export function updateTravelProgress() {
 	}
 }
 
-export function renderSaveList() {
+export async function renderSaveList() {
 	const container = document.getElementById("save-list-container");
 	clearElement(container);
-	const saves = listSaves();
+	const saves = await listSaves();
 
 	if (saves.length === 0) {
 		container.textContent = "Aucune sauvegarde trouvée.";
 		return;
 	}
 
-	saves
-		.sort()
-		.reverse()
-		.forEach((key) => {
-			const item = document.createElement("div");
-			item.className = "save-item";
+	saves.forEach((save) => {
+		const item = document.createElement("div");
+		item.className = "save-item";
 
-			const info = document.createElement("div");
-			info.className = "save-item-info";
-			if (key === "merchant_save_v1") {
-				info.textContent = "Ancienne sauvegarde (Legacy Save)";
-			} else {
-				const date = new Date(
-					parseInt(key.split("_").pop())
-				).toLocaleString("fr-FR");
-				info.textContent = `Sauvegarde du ${date}`;
+		const info = document.createElement("div");
+		info.className = "save-item-info";
+		info.textContent = `Sauvegarde: ${save.save_name}`;
+		item.appendChild(info);
+
+		try {
+			const saveData = JSON.parse(save.save_data);
+			if (saveData && saveData.joueur) {
+				const j = saveData.joueur;
+				const stats = document.createElement("div");
+				stats.className = "save-item-stats";
+				stats.textContent = `Or: ${formatOr(j.or)} | Ville: ${
+					j.villeActuelle
+				} | Niv: ${j.niveau} (XP: ${j.xp})`;
+				item.appendChild(stats);
 			}
-			item.appendChild(info);
+		} catch (e) {
+			console.error("Impossible de lire les données de sauvegarde:", save.id, e);
+		}
 
-			// Load save data to display stats
-			const rawData = localStorage.getItem(key);
-			if (rawData) {
-				try {
-					const saveData = JSON.parse(rawData);
-					if (saveData && saveData.joueur) {
-						const j = saveData.joueur;
-						const stats = document.createElement("div");
-						stats.className = "save-item-stats";
-						stats.textContent = `Or: ${formatOr(j.or)} | Ville: ${
-							j.villeActuelle
-						} | Niv: ${j.niveau} (XP: ${j.xp})`;
-						item.appendChild(stats);
-					}
-				} catch (e) {
-					console.error(
-						"Impossible de lire les données de sauvegarde:",
-						key,
-						e
-					);
-				}
+		const actions = document.createElement("div");
+		actions.className = "save-item-actions";
+
+		const btnLoad = document.createElement("button");
+		btnLoad.textContent = "Charger";
+		btnLoad.addEventListener("click", async () => {
+			const loaded = await loadGameFromStorage(save.id);
+			if (loaded) {
+				hideStartScreen();
+				hideLoadGameModal();
+				showGameScreen();
 			}
-
-			const actions = document.createElement("div");
-			actions.className = "save-item-actions";
-
-			const btnLoad = document.createElement("button");
-			btnLoad.textContent = "Charger";
-			btnLoad.addEventListener("click", () => {
-				if (loadGameFromStorage(key)) {
-					hideStartScreen();
-					hideLoadGameModal();
-					showGameScreen();
-				}
-			});
-			actions.appendChild(btnLoad);
-
-			const btnDelete = document.createElement("button");
-			btnDelete.textContent = "Effacer";
-			btnDelete.addEventListener("click", () => {
-				if (
-					confirm("Êtes-vous sûr de vouloir effacer cette sauvegarde ?")
-				) {
-					deleteSave(key);
-					renderSaveList();
-				}
-			});
-			actions.appendChild(btnDelete);
-
-			item.appendChild(actions);
-			container.appendChild(item);
 		});
+		actions.appendChild(btnLoad);
+
+		const btnDelete = document.createElement("button");
+		btnDelete.textContent = "Effacer";
+		btnDelete.addEventListener("click", async () => {
+			if (
+				confirm("Êtes-vous sûr de vouloir effacer cette sauvegarde ?")
+			) {
+				await deleteSave(save.id);
+				renderSaveList();
+			}
+		});
+		actions.appendChild(btnDelete);
+
+		item.appendChild(actions);
+		container.appendChild(item);
+	});
 }
 
 export function showLoadGameModal() {
