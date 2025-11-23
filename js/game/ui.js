@@ -206,109 +206,62 @@ function renderTravelPanel() {
 	const routesFrom = gameState.routes[j.villeActuelle] || {};
 	const isTraveling = !!gameState.voyage;
 
-	// --- Card for Current City ---
 	const currentCityWrap = document.createElement("div");
 	currentCityWrap.className = "travel-item";
-
 	const currentCityStrong = document.createElement("strong");
 	currentCityStrong.textContent = j.villeActuelle;
 	currentCityWrap.appendChild(currentCityStrong);
-
-	const currentCityLineTime = document.createElement("div");
-	currentCityLineTime.textContent = `Temps : 0 s`;
-	const currentCityLineCost = document.createElement("div");
-	currentCityLineCost.textContent = `Coût : vous êtes ici`;
-
-	currentCityWrap.appendChild(currentCityLineTime);
-	currentCityWrap.appendChild(currentCityLineCost);
-
-	const currentCityLineBtn = document.createElement("div");
-	currentCityLineBtn.style.marginTop = ".3rem";
+	currentCityWrap.appendChild(document.createElement("div")).textContent = `Coût : vous êtes ici`;
 	const currentCityBtnPrices = document.createElement("button");
 	currentCityBtnPrices.textContent = "Voir les prix";
 	currentCityBtnPrices.addEventListener("click", () => {
 		setSelectedCityName(j.villeActuelle);
 		renderAll();
 	});
-	currentCityLineBtn.appendChild(currentCityBtnPrices);
-	currentCityWrap.appendChild(currentCityLineBtn);
-
+	currentCityWrap.appendChild(currentCityBtnPrices);
 	panel.appendChild(currentCityWrap);
 
-	// --- Cards for Destinations ---
-	const routeNames = Object.keys(routesFrom);
-	if (routeNames.length === 0) {
-		const div = document.createElement("div");
-		div.textContent = "Aucune autre destination depuis cette ville.";
-		panel.appendChild(div);
-	} else {
-		routeNames.forEach((dest) => {
-			const route = routesFrom[dest];
-			const wrap = document.createElement("div");
-			wrap.className = "travel-item";
+	Object.keys(routesFrom).forEach((dest) => {
+		const route = routesFrom[dest];
+		const wrap = document.createElement("div");
+		wrap.className = "travel-item";
 
-			const strong = document.createElement("strong");
-			strong.textContent = dest;
-			wrap.appendChild(strong);
+		const strong = document.createElement("strong");
+		strong.textContent = dest;
+		wrap.appendChild(strong);
 
-			const tempsSec = (route.temps / 1000).toFixed(1);
-			const coutBase = route.cout;
-			const coutReel = Math.round(
-				coutBase * (1 - j.reductionVoyage)
-			);
+		const coutReel = Math.round(route.cout * (1 - j.reductionVoyage));
+		wrap.appendChild(document.createElement("div")).textContent = `Coût : ${coutReel} or`;
 
-			const lineTime = document.createElement("div");
-			lineTime.textContent = `Temps : ${tempsSec} s`;
-			const lineCost = document.createElement("div");
-			lineCost.textContent = `Coût : ${coutReel.toLocaleString(
-				"fr-FR"
-			)} or (base ${coutBase})`;
-
-			wrap.appendChild(lineTime);
-			wrap.appendChild(lineCost);
-
-			const lineBtn = document.createElement("div");
-			lineBtn.style.marginTop = ".3rem";
-
-			const btnPrices = document.createElement("button");
-			btnPrices.textContent = "Voir les prix";
-			btnPrices.addEventListener("click", () => {
-				setSelectedCityName(dest);
-				renderAll();
-			});
-			lineBtn.appendChild(btnPrices);
-
-			const btnTravel = document.createElement("button");
-			btnTravel.textContent = "Voyager";
-			btnTravel.dataset.dest = dest;
-			if (isTraveling) btnTravel.disabled = true;
-			btnTravel.addEventListener("click", () => {
-				startTravel(dest);
-			});
-			lineBtn.appendChild(btnTravel);
-
-			wrap.appendChild(lineBtn);
-
-			panel.appendChild(wrap);
+		const btnPrices = document.createElement("button");
+		btnPrices.textContent = "Voir les prix";
+		btnPrices.addEventListener("click", () => {
+			setSelectedCityName(dest);
+			renderAll();
 		});
-	}
+		wrap.appendChild(btnPrices);
+
+		const btnTravel = document.createElement("button");
+		btnTravel.textContent = "Voyager";
+		if (isTraveling) btnTravel.disabled = true;
+		btnTravel.addEventListener("click", () => startTravel(dest));
+		wrap.appendChild(btnTravel);
+
+		panel.appendChild(wrap);
+	});
 }
 
 export function showTravelOverlay() {
-	const overlay = document.getElementById("travel-overlay");
-	overlay.classList.remove("hidden");
+	document.getElementById("travel-overlay").classList.remove("hidden");
 	updateTravelProgress();
 }
 
 export function hideTravelOverlay() {
-	const overlay = document.getElementById("travel-overlay");
-	overlay.classList.add("hidden");
-	const bar = document.getElementById("travel-progress");
-	if (bar) bar.style.width = "0%";
+	document.getElementById("travel-overlay").classList.add("hidden");
 }
 
 export function updateTravelProgress() {
-	const v = gameState && gameState.voyage;
+	const v = gameState?.voyage;
 	if (!v) {
 		hideTravelOverlay();
 		if (travelIntervalId) clearInterval(travelIntervalId);
@@ -317,92 +270,71 @@ export function updateTravelProgress() {
 
 	const now = Date.now();
 	let ratio = (now - v.startTime) / v.tempsTotal;
-	if (ratio < 0) ratio = 0;
-	if (ratio > 1) ratio = 1;
+	ratio = Math.max(0, Math.min(1, ratio));
 
-	const bar = document.getElementById("travel-progress");
-	const text = document.getElementById("travel-text");
-
-	if (bar) bar.style.width = ratio * 100 + "%";
-	if (text)
-		text.textContent = `Voyage de ${v.depart} vers ${
-			v.arrivee
-		} : ${Math.round(ratio * 100)} %`;
+	document.getElementById("travel-progress").style.width = ratio * 100 + "%";
+	document.getElementById("travel-text").textContent = `Voyage de ${v.depart} vers ${v.arrivee} : ${Math.round(ratio * 100)} %`;
 
 	if (ratio >= 1) {
-		if (travelIntervalId) {
-			clearInterval(travelIntervalId);
-			travelIntervalId = null;
-		}
+		if (travelIntervalId) clearInterval(travelIntervalId);
+		travelIntervalId = null;
 		finishTravel();
 	}
 }
 
 export async function renderSaveList() {
-	const container = document.getElementById("save-list-container");
-	clearElement(container);
-	const saves = await listSaves();
+    const container = document.getElementById("save-list-container");
+    clearElement(container);
+    const saves = await listSaves();
 
-	if (saves.length === 0) {
-		container.textContent = "Aucune sauvegarde trouvée.";
-		return;
-	}
+    if (saves.length === 0) {
+        container.textContent = "Aucune sauvegarde trouvée.";
+        return;
+    }
 
-	saves.forEach((save) => {
-		const item = document.createElement("div");
-		item.className = "save-item";
+    saves.forEach((save) => {
+        const item = document.createElement("div");
+        item.className = "save-item";
 
-		const info = document.createElement("div");
-		info.className = "save-item-info";
-		info.textContent = `Sauvegarde: ${save.save_name}`;
-		item.appendChild(info);
+        const info = document.createElement("div");
+        info.className = "save-item-info";
+        info.textContent = `Partie de ${save.nom}`;
+        item.appendChild(info);
 
-		try {
-			const saveData = JSON.parse(save.save_data);
-			if (saveData && saveData.joueur) {
-				const j = saveData.joueur;
-				const stats = document.createElement("div");
-				stats.className = "save-item-stats";
-				stats.textContent = `Or: ${formatOr(j.or)} | Ville: ${
-					j.villeActuelle
-				} | Niv: ${j.niveau} (XP: ${j.xp})`;
-				item.appendChild(stats);
-			}
-		} catch (e) {
-			console.error("Impossible de lire les données de sauvegarde:", save.id, e);
-		}
+        const stats = document.createElement("div");
+        stats.className = "save-item-stats";
+        stats.textContent = `Or: ${formatOr(parseInt(save.gold))} | Ville: ${save.villeActuelle} | Niv: ${save.niveau} (XP: ${save.xp})`;
+        item.appendChild(stats);
 
-		const actions = document.createElement("div");
-		actions.className = "save-item-actions";
+        const actions = document.createElement("div");
+        actions.className = "save-item-actions";
 
-		const btnLoad = document.createElement("button");
-		btnLoad.textContent = "Charger";
-		btnLoad.addEventListener("click", async () => {
-			const loaded = await loadGameFromStorage(save.id);
-			if (loaded) {
-				hideStartScreen();
-				hideLoadGameModal();
-				showGameScreen();
-			}
-		});
-		actions.appendChild(btnLoad);
+        const btnLoad = document.createElement("button");
+        btnLoad.textContent = "Charger";
+        btnLoad.addEventListener("click", async () => {
+            if (await loadGameFromStorage(save.id)) {
+                hideStartScreen();
+                hideLoadGameModal();
+                showGameScreen();
+            }
+        });
+        actions.appendChild(btnLoad);
 
-		const btnDelete = document.createElement("button");
-		btnDelete.textContent = "Effacer";
-		btnDelete.addEventListener("click", async () => {
-			if (
-				confirm("Êtes-vous sûr de vouloir effacer cette sauvegarde ?")
-			) {
-				await deleteSave(save.id);
-				renderSaveList();
-			}
-		});
-		actions.appendChild(btnDelete);
+        const btnDelete = document.createElement("button");
+        btnDelete.textContent = "Effacer";
+        btnDelete.addEventListener("click", async () => {
+            if (confirm("Êtes-vous sûr de vouloir effacer cette sauvegarde ?")) {
+                await deleteSave(save.id);
+                renderSaveList();
+            }
+        });
+        actions.appendChild(btnDelete);
 
-		item.appendChild(actions);
-		container.appendChild(item);
-	});
+        item.appendChild(actions);
+        container.appendChild(item);
+    });
 }
+
 
 export function showLoadGameModal() {
 	renderSaveList();
@@ -419,35 +351,30 @@ export function hideStartScreen() {
 
 export function setTheme(theme) {
     const body = document.body;
+    body.classList.remove('space-theme', 'day-mode');
+    localStorage.removeItem('dayMode');
 
-    if (theme === 'default') {
-        body.classList.remove('space-theme', 'day-mode');
-        localStorage.setItem('selectedTheme', 'default');
-        localStorage.removeItem('dayMode');
-    } else if (theme === 'space') {
-        body.classList.remove('day-mode'); // Always reset to night mode when selecting space theme
+    if (theme === 'space') {
         body.classList.add('space-theme');
         localStorage.setItem('selectedTheme', 'space');
-        localStorage.removeItem('dayMode');
     } else if (theme === 'toggle-day-night') {
-        if (body.classList.contains('space-theme')) {
+        if (localStorage.getItem('selectedTheme') === 'space') {
+            body.classList.add('space-theme');
             body.classList.toggle('day-mode');
             if (body.classList.contains('day-mode')) {
                 localStorage.setItem('dayMode', 'true');
-            } else {
-                localStorage.removeItem('dayMode');
             }
         }
+    } else {
+        localStorage.setItem('selectedTheme', 'default');
     }
 }
 
 export function applySavedTheme() {
     const savedTheme = localStorage.getItem('selectedTheme');
-    const dayMode = localStorage.getItem('dayMode');
-
     if (savedTheme === 'space') {
         document.body.classList.add('space-theme');
-        if (dayMode === 'true') {
+        if (localStorage.getItem('dayMode') === 'true') {
             document.body.classList.add('day-mode');
         }
     }
