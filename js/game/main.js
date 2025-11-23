@@ -130,7 +130,7 @@ export function showGameScreen() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     applySavedTheme();
     const worldData = loadWorldData();
 
@@ -144,14 +144,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const startNewGameBtn = document.getElementById("start-new-game");
     const startLoadGameBtn = document.getElementById("start-load-game");
 
-    if (listSaves().length === 0) {
+    const saves = await listSaves();
+    if (saves.length === 0) {
         startLoadGameBtn.disabled = true;
     }
 
-    startNewGameBtn.addEventListener("click", () => {
+    startNewGameBtn.addEventListener("click", async () => {
         startScreen.classList.add("hidden");
         createNewGameState(worldData);
-        saveGame();
+        await saveGame();
         showGameScreen();
     });
 
@@ -160,10 +161,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // --- In-Game Menu Logic ---
-    document.getElementById("btn-new-game").addEventListener("click", () => {
+    document.getElementById("btn-new-game").addEventListener("click", async () => {
         if (confirm("Êtes-vous sûr de vouloir commencer une nouvelle partie ? Votre progression non sauvegardée sera perdue.")) {
             createNewGameState(worldData);
-            saveGame();
+            await saveGame();
             showGameScreen();
         }
     });
@@ -172,17 +173,19 @@ document.addEventListener("DOMContentLoaded", () => {
         showLoadGameModal();
     });
 
-    document.getElementById("btn-reset-save").addEventListener("click", () => {
+    document.getElementById("btn-reset-save").addEventListener("click", async () => {
         if (confirm("Êtes-vous sûr de vouloir effacer TOUTES les sauvegardes ? Cette action est irréversible.")) {
-            const saves = listSaves();
-            saves.forEach(key => deleteSave(key));
+            const saves = await listSaves();
+            for (const save of saves) {
+                await deleteSave(save.id);
+            }
             showMessage("Toutes les sauvegardes ont été effacées.");
             window.location.reload(); // Reload to show the start screen
         }
     });
 
-    document.getElementById("btn-save-game").addEventListener("click", () => {
-        saveGame();
+    document.getElementById("btn-save-game").addEventListener("click", async () => {
+        await saveGame();
         showMessage("Partie sauvegardée.");
     });
 
