@@ -1,6 +1,6 @@
 // js/game/main.js
 import { gameState, createNewGameState, saveGame, loadGameFromStorage, loadWorldData, setSelectedCityName, listSaves, deleteSave } from './state.js';
-import { renderAll, showMessage, showTravelOverlay, hideTravelOverlay, updateTravelProgress, showLoadGameModal, hideLoadGameModal } from './ui.js';
+import { renderAll, showMessage, showTravelOverlay, hideTravelOverlay, updateTravelProgress, showLoadGameModal, hideLoadGameModal, setTheme, applySavedTheme } from './ui.js';
 
 let travelIntervalId = null;
 
@@ -131,7 +131,13 @@ export function showGameScreen() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    applySavedTheme();
     const worldData = loadWorldData();
+
+    // --- Theme Logic ---
+    document.getElementById("theme-default").addEventListener("click", () => setTheme('default'));
+    document.getElementById("theme-space").addEventListener("click", () => setTheme('space'));
+    document.getElementById("theme-toggle-day-night").addEventListener("click", () => setTheme('toggle-day-night'));
 
     // --- Start Screen Logic ---
     const startScreen = document.getElementById("start-screen");

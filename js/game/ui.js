@@ -433,3 +433,39 @@ export function hideLoadGameModal() {
 export function hideStartScreen() {
 	document.getElementById("start-screen").classList.add("hidden");
 }
+
+export function setTheme(theme) {
+    const body = document.body;
+
+    if (theme === 'default') {
+        body.classList.remove('space-theme', 'day-mode');
+        localStorage.setItem('selectedTheme', 'default');
+        localStorage.removeItem('dayMode');
+    } else if (theme === 'space') {
+        body.classList.remove('day-mode'); // Always reset to night mode when selecting space theme
+        body.classList.add('space-theme');
+        localStorage.setItem('selectedTheme', 'space');
+        localStorage.removeItem('dayMode');
+    } else if (theme === 'toggle-day-night') {
+        if (body.classList.contains('space-theme')) {
+            body.classList.toggle('day-mode');
+            if (body.classList.contains('day-mode')) {
+                localStorage.setItem('dayMode', 'true');
+            } else {
+                localStorage.removeItem('dayMode');
+            }
+        }
+    }
+}
+
+export function applySavedTheme() {
+    const savedTheme = localStorage.getItem('selectedTheme');
+    const dayMode = localStorage.getItem('dayMode');
+
+    if (savedTheme === 'space') {
+        document.body.classList.add('space-theme');
+        if (dayMode === 'true') {
+            document.body.classList.add('day-mode');
+        }
+    }
+}
