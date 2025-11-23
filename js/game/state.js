@@ -1,7 +1,7 @@
 // js/game/state.js
 import { defaultWorld } from './data.js';
+import { saveGame as apiSaveGame, loadGame as apiLoadGame, listSaves as apiListSaves, deleteSave as apiDeleteSave } from './api.js';
 
-const SAVE_PREFIX = "merchant_save_";
 const WORLD_KEY = "merchant_world_config_v1";
 
 export let gameState = null;
@@ -71,17 +71,18 @@ export function createNewGameState(worldData) {
 }
 
 // Save and Load game state
-export function saveGame() {
+export async function saveGame(saveName) {
     if (!gameState) return;
-    const key = `${SAVE_PREFIX}${Date.now()}`;
-    localStorage.setItem(key, JSON.stringify(gameState));
+    const response = await apiSaveGame(saveName, gameState);
+    if (!response.success) {
+        console.error("Failed to save game:", response.message);
+    }
 }
 
-export function loadGameFromStorage(key) {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    try {
-        const state = JSON.parse(raw);
+export async function loadGame(saveName) {
+    const response = await apiLoadGame(saveName);
+    if (response.success && response.data) {
+        const state = response.data;
         // Clean up any malformed or finished voyages
         if (state.voyage) {
             const v = state.voyage;
@@ -104,23 +105,23 @@ export function loadGameFromStorage(key) {
         gameState = state;
         selectedCityName = gameState.joueur.villeActuelle;
         return state;
-    } catch (e) {
-        console.error("Error loading game:", e);
-        return null;
     }
+    console.error("Failed to load game:", response.message);
+    return null;
 }
 
-export function listSaves() {
-    const saves = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith(SAVE_PREFIX) || key === "merchant_save_v1") {
-            saves.push(key);
-        }
+export async function listSaves() {
+    const response = await apiListSaves();
+    if (response.success) {
+        return response.data;
     }
-    return saves;
+    console.error("Failed to list saves:", response.message);
+    return [];
 }
 
-export function deleteSave(key) {
-	localStorage.removeItem(key);
+export async function deleteSave(saveName) {
+	const response = await apiDeleteSave(saveName);
+    if (!response.success) {
+        console.error("Failed to delete save:", response.message);
+    }
 }

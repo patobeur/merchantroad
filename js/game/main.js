@@ -1,8 +1,12 @@
 // js/game/main.js
-import { gameState, createNewGameState, saveGame, loadGameFromStorage, loadWorldData, setSelectedCityName, listSaves, deleteSave } from './state.js';
-import { renderAll, showMessage, showTravelOverlay, hideTravelOverlay, updateTravelProgress, showLoadGameModal, hideLoadGameModal, setTheme, applySavedTheme } from './ui.js';
+import { gameState, createNewGameState, saveGame, loadWorldData, setSelectedCityName, listSaves, deleteSave } from './state.js';
+import { renderAll, showMessage, showTravelOverlay, hideTravelOverlay, updateTravelProgress, showLoadGameModal, hideLoadGameModal, setTheme, applySavedTheme, showAuthScreen, showStartScreen, showGameScreenUI, toggleDayNight } from './ui.js';
+import { register, login, logout, getStatus } from './api.js';
 
 let travelIntervalId = null;
+let worldData = null; // To store loaded world data
+
+// --- Core Game Logic (largely unchanged) ---
 
 function computeReduction(level) {
     return Math.min(0.5, level * 0.02);
@@ -63,7 +67,7 @@ export function doTrade(type, res, qtyStr) {
         showMessage(`Vente de ${qty} ${res}.`);
     }
 
-    saveGame();
+    saveGame('autosave').then(() => console.log("Autosave complete."));
     renderAll();
 }
 
@@ -92,15 +96,14 @@ export function startTravel(destination) {
 
     j.or -= coutReel;
 
-    const now = Date.now();
     gameState.voyage = {
         depart: from,
         arrivee: destination,
         tempsTotal: route.temps,
-        startTime: now,
+        startTime: Date.now(),
     };
 
-    saveGame();
+    saveGame('autosave').then(() => console.log("Travel started, saved."));
     showTravelOverlay();
 
     if (travelIntervalId) clearInterval(travelIntervalId);
@@ -115,13 +118,11 @@ export function finishTravel() {
     gameState.voyage = null;
     setSelectedCityName(v.arrivee);
     hideTravelOverlay();
-    saveGame();
-    showMessage(`Arrivé à ${v.arrivee}.`);
+    saveGame('autosave').then(() => showMessage(`Arrivé à ${v.arrivee}.`));
     renderAll();
 }
 
 export function showGameScreen() {
-    document.getElementById("game-screen").classList.remove("hidden");
     renderAll();
     if (gameState.voyage) {
         showTravelOverlay();
@@ -130,68 +131,123 @@ export function showGameScreen() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+// --- Application Initialization ---
+
+document.addEventListener("DOMContentLoaded", async () => {
     applySavedTheme();
-    const worldData = loadWorldData();
+    worldData = loadWorldData();
+    setupEventListeners();
+
+    const status = await getStatus();
+    if (status.loggedIn) {
+        showStartScreen(status.user_name);
+        const saves = await listSaves();
+        document.getElementById("start-load-game").disabled = saves.length === 0;
+    } else {
+        showAuthScreen();
+    }
+});
+
+function setupEventListeners() {
+    // --- Auth Forms ---
+    document.getElementById('login-form').addEventListener('submit', handleLogin);
+    document.getElementById('register-form').addEventListener('submit', handleRegister);
+    document.getElementById('show-register').addEventListener('click', toggleAuthForms);
+    document.getElementById('show-login').addEventListener('click', toggleAuthForms);
+    document.getElementById('btn-logout').addEventListener('click', handleLogout);
 
     // --- Theme Logic ---
     document.getElementById("theme-default").addEventListener("click", () => setTheme('default'));
     document.getElementById("theme-space").addEventListener("click", () => setTheme('space'));
-    document.getElementById("theme-toggle-day-night").addEventListener("click", () => setTheme('toggle-day-night'));
+    document.getElementById("theme-toggle-day-night").addEventListener("click", () => toggleDayNight());
 
     // --- Start Screen Logic ---
-    const startScreen = document.getElementById("start-screen");
-    const startNewGameBtn = document.getElementById("start-new-game");
-    const startLoadGameBtn = document.getElementById("start-load-game");
-
-    if (listSaves().length === 0) {
-        startLoadGameBtn.disabled = true;
-    }
-
-    startNewGameBtn.addEventListener("click", () => {
-        startScreen.classList.add("hidden");
-        createNewGameState(worldData);
-        saveGame();
-        showGameScreen();
-    });
-
-    startLoadGameBtn.addEventListener("click", () => {
-        showLoadGameModal();
-    });
+    document.getElementById("start-new-game").addEventListener("click", handleNewGame);
+    document.getElementById("start-load-game").addEventListener("click", showLoadGameModal);
 
     // --- In-Game Menu Logic ---
     document.getElementById("btn-new-game").addEventListener("click", () => {
-        if (confirm("Êtes-vous sûr de vouloir commencer une nouvelle partie ? Votre progression non sauvegardée sera perdue.")) {
-            createNewGameState(worldData);
-            saveGame();
-            showGameScreen();
+        if (confirm("Êtes-vous sûr ? Votre partie actuelle sera écrasée par la nouvelle sauvegarde.")) {
+            handleNewGame();
         }
     });
-
-    document.getElementById("btn-load-game").addEventListener("click", () => {
-        showLoadGameModal();
-    });
-
-    document.getElementById("btn-reset-save").addEventListener("click", () => {
-        if (confirm("Êtes-vous sûr de vouloir effacer TOUTES les sauvegardes ? Cette action est irréversible.")) {
-            const saves = listSaves();
-            saves.forEach(key => deleteSave(key));
-            showMessage("Toutes les sauvegardes ont été effacées.");
-            window.location.reload(); // Reload to show the start screen
+    document.getElementById("btn-load-game").addEventListener("click", showLoadGameModal);
+    document.getElementById("btn-save-game").addEventListener("click", async () => {
+        const saveName = prompt("Entrez un nom pour votre sauvegarde :", "manual-save");
+        if (saveName) {
+            await saveGame(saveName);
+            showMessage("Partie sauvegardée.");
         }
     });
+    document.getElementById("btn-reset-save").addEventListener("click", handleResetSaves);
 
-    document.getElementById("btn-save-game").addEventListener("click", () => {
-        saveGame();
-        showMessage("Partie sauvegardée.");
-    });
 
     // --- Modal Logic ---
     const modal = document.getElementById("load-game-modal");
     modal.querySelector(".close-button").addEventListener("click", hideLoadGameModal);
     window.addEventListener("click", (event) => {
-        if (event.target === modal) {
-            hideLoadGameModal();
-        }
+        if (event.target === modal) hideLoadGameModal();
     });
-});
+}
+
+// --- Event Handlers ---
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const result = await login(email, password);
+    if (result.success) {
+        showMessage('Connexion réussie !');
+        showStartScreen(result.user_name);
+        const saves = await listSaves();
+        document.getElementById("start-load-game").disabled = saves.length === 0;
+    } else {
+        showMessage(result.message || 'Erreur de connexion.');
+    }
+}
+
+async function handleRegister(e) {
+    e.preventDefault();
+    const name = document.getElementById('register-name').value;
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const result = await register(name, email, password);
+    if (result.success) {
+        showMessage('Inscription réussie ! Vous pouvez maintenant vous connecter.');
+        toggleAuthForms(); // Switch to login form
+    } else {
+        showMessage(result.message || 'Erreur d\'inscription.');
+    }
+}
+
+async function handleLogout() {
+    await logout();
+    showMessage('Vous avez été déconnecté.');
+    window.location.reload();
+}
+
+async function handleNewGame() {
+    createNewGameState(worldData);
+    await saveGame('autosave'); // Save the new game state to the server
+    const status = await getStatus();
+    showGameScreenUI(status.user_name);
+    showGameScreen();
+}
+
+async function handleResetSaves() {
+    if (confirm("Êtes-vous sûr de vouloir effacer TOUTES vos sauvegardes sur le serveur ?")) {
+        const saves = await listSaves();
+        for (const save of saves) {
+            await deleteSave(save.save_name);
+        }
+        showMessage("Toutes les sauvegardes ont été effacées.");
+        document.getElementById("start-load-game").disabled = true;
+    }
+}
+
+function toggleAuthForms(e) {
+    if (e) e.preventDefault();
+    document.getElementById('login-form-container').classList.toggle('hidden');
+    document.getElementById('register-form-container').classList.toggle('hidden');
+}

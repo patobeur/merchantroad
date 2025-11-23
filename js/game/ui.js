@@ -1,12 +1,5 @@
 // js/game/ui.js
-import {
-	gameState,
-	selectedCityName,
-	setSelectedCityName,
-	listSaves,
-	loadGameFromStorage,
-	deleteSave,
-} from "./state.js";
+import { gameState, selectedCityName, setSelectedCityName, listSaves, loadGame, deleteSave } from "./state.js";
 import { doTrade, startTravel, finishTravel, showGameScreen } from "./main.js";
 
 let travelIntervalId = null;
@@ -26,8 +19,41 @@ export function showMessage(text) {
 	const bar = document.getElementById("message-bar");
 	bar.textContent = text;
 	bar.classList.add("visible");
-	setTimeout(() => bar.classList.remove("visible"), 2000);
+	setTimeout(() => bar.classList.remove("visible"), 3000);
 }
+
+// --- Screen Management ---
+export function showAuthScreen() {
+    document.getElementById('auth-screen').classList.remove('hidden');
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.add('hidden');
+    document.getElementById('user-info').classList.add('hidden');
+}
+
+export function showStartScreen(userName) {
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('start-screen').classList.remove('hidden');
+    document.getElementById('game-screen').classList.add('hidden');
+    updateUserInfo(userName);
+}
+
+export function showGameScreenUI(userName) {
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.remove('hidden');
+    updateUserInfo(userName);
+}
+
+function updateUserInfo(userName) {
+    const userInfo = document.getElementById('user-info');
+    if (userName) {
+        document.getElementById('user-name-display').textContent = `Bonjour, ${userName}`;
+        userInfo.classList.remove('hidden');
+    } else {
+        userInfo.classList.add('hidden');
+    }
+}
+
 
 export function renderAll() {
 	if (!gameState) return;
@@ -74,7 +100,7 @@ function renderPlayerPanel() {
 		sellAllBtn.title = "Vendre tous le stock";
 		sellAllBtn.style.marginLeft = "10px";
 		if (q === 0) {
-			sellAllBtn.classList = "hidden";
+			sellAllBtn.classList.add("hidden");
 			sellAllBtn.disabled = true;
 		}
 		sellAllBtn.addEventListener("click", () => {
@@ -86,7 +112,7 @@ function renderPlayerPanel() {
 		});
 
 		li.appendChild(sellAllBtn);
-		ul.appendChild(li);
+ul.appendChild(li);
 	});
 
 	cargoDiv.appendChild(ul);
@@ -209,101 +235,48 @@ function renderTravelPanel() {
 	const routesFrom = gameState.routes[j.villeActuelle] || {};
 	const isTraveling = !!gameState.voyage;
 
-	// --- Card for Current City ---
-	const currentCityWrap = document.createElement("div");
-	currentCityWrap.className = "travel-item";
+	Object.keys(routesFrom).forEach((dest) => {
+		const route = routesFrom[dest];
+		const wrap = document.createElement("div");
+		wrap.className = "travel-item";
 
-	const currentCityStrong = document.createElement("strong");
-	currentCityStrong.textContent = j.villeActuelle;
-	currentCityWrap.appendChild(currentCityStrong);
+		const strong = document.createElement("strong");
+		strong.textContent = dest;
+		wrap.appendChild(strong);
 
-	const currentCityLineTime = document.createElement("div");
-	currentCityLineTime.textContent = `Temps : 0 s`;
-	const currentCityLineCost = document.createElement("div");
-	currentCityLineCost.textContent = `Coût : vous êtes ici`;
+		const tempsSec = (route.temps / 1000).toFixed(1);
+		const coutBase = route.cout;
+		const coutReel = Math.round(coutBase * (1 - j.reductionVoyage));
 
-	currentCityWrap.appendChild(currentCityLineTime);
-	currentCityWrap.appendChild(currentCityLineCost);
+		wrap.appendChild(document.createElement("div")).textContent = `Temps : ${tempsSec} s`;
+		wrap.appendChild(document.createElement("div")).textContent = `Coût : ${coutReel.toLocaleString("fr-FR")} or`;
 
-	const currentCityLineBtn = document.createElement("div");
-	currentCityLineBtn.style.marginTop = ".3rem";
-	const currentCityBtnPrices = document.createElement("button");
-	currentCityBtnPrices.textContent = "Voir les prix";
-	currentCityBtnPrices.addEventListener("click", () => {
-		setSelectedCityName(j.villeActuelle);
-		renderAll();
+		const btnTravel = document.createElement("button");
+		btnTravel.textContent = "Voyager";
+		btnTravel.dataset.dest = dest;
+		if (isTraveling) btnTravel.disabled = true;
+		btnTravel.addEventListener("click", () => startTravel(dest));
+
+        const btnPrices = document.createElement("button");
+        btnPrices.textContent = "Voir les prix";
+        btnPrices.addEventListener("click", () => {
+            setSelectedCityName(dest);
+            renderCityDetails(dest);
+        });
+
+		wrap.appendChild(btnTravel);
+        wrap.appendChild(btnPrices);
+		panel.appendChild(wrap);
 	});
-	currentCityLineBtn.appendChild(currentCityBtnPrices);
-	currentCityWrap.appendChild(currentCityLineBtn);
-
-	panel.appendChild(currentCityWrap);
-
-	// --- Cards for Destinations ---
-	const routeNames = Object.keys(routesFrom);
-	if (routeNames.length === 0) {
-		const div = document.createElement("div");
-		div.textContent = "Aucune autre destination depuis cette ville.";
-		panel.appendChild(div);
-	} else {
-		routeNames.forEach((dest) => {
-			const route = routesFrom[dest];
-			const wrap = document.createElement("div");
-			wrap.className = "travel-item";
-
-			const strong = document.createElement("strong");
-			strong.textContent = dest;
-			wrap.appendChild(strong);
-
-			const tempsSec = (route.temps / 1000).toFixed(1);
-			const coutBase = route.cout;
-			const coutReel = Math.round(coutBase * (1 - j.reductionVoyage));
-
-			const lineTime = document.createElement("div");
-			lineTime.textContent = `Temps : ${tempsSec} s`;
-			const lineCost = document.createElement("div");
-			lineCost.textContent = `Coût : ${coutReel.toLocaleString(
-				"fr-FR"
-			)} or (base ${coutBase})`;
-
-			wrap.appendChild(lineTime);
-			wrap.appendChild(lineCost);
-
-			const lineBtn = document.createElement("div");
-			lineBtn.style.marginTop = ".3rem";
-
-			const btnPrices = document.createElement("button");
-			btnPrices.textContent = "Voir les prix";
-			btnPrices.addEventListener("click", () => {
-				setSelectedCityName(dest);
-				renderAll();
-			});
-			lineBtn.appendChild(btnPrices);
-
-			const btnTravel = document.createElement("button");
-			btnTravel.textContent = "Voyager";
-			btnTravel.dataset.dest = dest;
-			if (isTraveling) btnTravel.disabled = true;
-			btnTravel.addEventListener("click", () => {
-				startTravel(dest);
-			});
-			lineBtn.appendChild(btnTravel);
-
-			wrap.appendChild(lineBtn);
-
-			panel.appendChild(wrap);
-		});
-	}
 }
 
 export function showTravelOverlay() {
-	const overlay = document.getElementById("travel-overlay");
-	overlay.classList.remove("hidden");
+	document.getElementById("travel-overlay").classList.remove("hidden");
 	updateTravelProgress();
 }
 
 export function hideTravelOverlay() {
-	const overlay = document.getElementById("travel-overlay");
-	overlay.classList.add("hidden");
+	document.getElementById("travel-overlay").classList.add("hidden");
 	const bar = document.getElementById("travel-progress");
 	if (bar) bar.style.width = "0%";
 }
@@ -318,112 +291,72 @@ export function updateTravelProgress() {
 
 	const now = Date.now();
 	let ratio = (now - v.startTime) / v.tempsTotal;
-	if (ratio < 0) ratio = 0;
-	if (ratio > 1) ratio = 1;
+	ratio = Math.max(0, Math.min(1, ratio));
 
 	const bar = document.getElementById("travel-progress");
-	const text = document.getElementById("travel-text");
-
 	if (bar) bar.style.width = ratio * 100 + "%";
-	if (text)
-		text.textContent = `Voyage de ${v.depart} vers ${
-			v.arrivee
-		} : ${Math.round(ratio * 100)} %`;
+	const text = document.getElementById("travel-text");
+	if (text) text.textContent = `Voyage de ${v.depart} vers ${v.arrivee}: ${Math.round(ratio * 100)}%`;
 
 	if (ratio >= 1) {
-		if (travelIntervalId) {
-			clearInterval(travelIntervalId);
-			travelIntervalId = null;
-		}
+		if (travelIntervalId) clearInterval(travelIntervalId);
+		travelIntervalId = null;
 		finishTravel();
 	}
 }
 
-export function renderSaveList() {
-	const container = document.getElementById("save-list-container");
-	clearElement(container);
-	const saves = listSaves();
+export async function renderSaveList() {
+    const container = document.getElementById("save-list-container");
+    clearElement(container);
+    const saves = await listSaves();
 
-	if (saves.length === 0) {
-		container.textContent = "Aucune sauvegarde trouvée.";
-		return;
-	}
+    if (saves.length === 0) {
+        container.textContent = "Aucune sauvegarde trouvée.";
+        return;
+    }
 
-	saves
-		.sort()
-		.reverse()
-		.forEach((key) => {
-			const item = document.createElement("div");
-			item.className = "save-item";
+    saves.forEach((save) => {
+        const item = document.createElement("div");
+        item.className = "save-item";
 
-			const info = document.createElement("div");
-			info.className = "save-item-info";
-			if (key === "merchant_save_v1") {
-				info.textContent = "Ancienne sauvegarde (Legacy Save)";
-			} else {
-				const date = new Date(
-					parseInt(key.split("_").pop())
-				).toLocaleString("fr-FR");
-				info.textContent = `Sauvegarde du ${date}`;
-			}
-			item.appendChild(info);
+        const info = document.createElement("div");
+        info.className = "save-item-info";
+        const date = new Date(save.updated_at).toLocaleString("fr-FR");
+        info.textContent = `${save.save_name} - ${date}`;
+        item.appendChild(info);
 
-			// Load save data to display stats
-			const rawData = localStorage.getItem(key);
-			if (rawData) {
-				try {
-					const saveData = JSON.parse(rawData);
-					if (saveData && saveData.joueur) {
-						const j = saveData.joueur;
-						const stats = document.createElement("div");
-						stats.className = "save-item-stats";
-						stats.textContent = `Or: ${formatOr(j.or)} | Ville: ${
-							j.villeActuelle
-						} | Niv: ${j.niveau} (XP: ${j.xp})`;
-						item.appendChild(stats);
-					}
-				} catch (e) {
-					console.error(
-						"Impossible de lire les données de sauvegarde:",
-						key,
-						e
-					);
-				}
-			}
+        const actions = document.createElement("div");
+        actions.className = "save-item-actions";
 
-			const actions = document.createElement("div");
-			actions.className = "save-item-actions";
+        const btnLoad = document.createElement("button");
+        btnLoad.textContent = "Charger";
+        btnLoad.addEventListener("click", async () => {
+            if (await loadGame(save.save_name)) {
+                hideLoadGameModal();
+                const userName = document.getElementById('user-name-display').textContent.replace('Bonjour, ', '');
+                showGameScreenUI(userName);
+                showGameScreen();
+            }
+        });
+        actions.appendChild(btnLoad);
 
-			const btnLoad = document.createElement("button");
-			btnLoad.textContent = "Charger";
-			btnLoad.addEventListener("click", () => {
-				if (loadGameFromStorage(key)) {
-					hideStartScreen();
-					hideLoadGameModal();
-					showGameScreen();
-				}
-			});
-			actions.appendChild(btnLoad);
+        const btnDelete = document.createElement("button");
+        btnDelete.textContent = "Effacer";
+        btnDelete.addEventListener("click", async () => {
+            if (confirm("Êtes-vous sûr de vouloir effacer cette sauvegarde ?")) {
+                await deleteSave(save.save_name);
+                renderSaveList(); // Refresh the list
+            }
+        });
+        actions.appendChild(btnDelete);
 
-			const btnDelete = document.createElement("button");
-			btnDelete.textContent = "Effacer";
-			btnDelete.addEventListener("click", () => {
-				if (
-					confirm("Êtes-vous sûr de vouloir effacer cette sauvegarde ?")
-				) {
-					deleteSave(key);
-					renderSaveList();
-				}
-			});
-			actions.appendChild(btnDelete);
-
-			item.appendChild(actions);
-			container.appendChild(item);
-		});
+        item.appendChild(actions);
+        container.appendChild(item);
+    });
 }
 
-export function showLoadGameModal() {
-	renderSaveList();
+export async function showLoadGameModal() {
+	await renderSaveList();
 	document.getElementById("load-game-modal").classList.remove("hidden");
 }
 
@@ -431,42 +364,28 @@ export function hideLoadGameModal() {
 	document.getElementById("load-game-modal").classList.add("hidden");
 }
 
-export function hideStartScreen() {
-	document.getElementById("start-screen").classList.add("hidden");
-}
-
 export function setTheme(theme) {
 	const body = document.body;
+	localStorage.setItem('selectedTheme', theme);
+	body.className = ''; // Reset classes
 
-	if (theme === "default") {
-		body.classList.remove("space-theme", "day-mode");
-		localStorage.setItem("selectedTheme", "default");
-		localStorage.removeItem("dayMode");
-	} else if (theme === "space") {
-		body.classList.remove("day-mode"); // Always reset to night mode when selecting space theme
-		body.classList.add("space-theme");
-		localStorage.setItem("selectedTheme", "space");
-		localStorage.removeItem("dayMode");
-	} else if (theme === "toggle-day-night") {
-		if (body.classList.contains("space-theme")) {
-			body.classList.toggle("day-mode");
-			if (body.classList.contains("day-mode")) {
-				localStorage.setItem("dayMode", "true");
-			} else {
-				localStorage.removeItem("dayMode");
-			}
+	if (theme === 'space') {
+		body.classList.add('space-theme');
+		if (localStorage.getItem('dayMode') === 'true') {
+			body.classList.add('day-mode');
 		}
+	}
+}
+
+export function toggleDayNight() {
+	const body = document.body;
+	if (body.classList.contains('space-theme')) {
+		body.classList.toggle('day-mode');
+		localStorage.setItem('dayMode', body.classList.contains('day-mode'));
 	}
 }
 
 export function applySavedTheme() {
-	const savedTheme = localStorage.getItem("selectedTheme");
-	const dayMode = localStorage.getItem("dayMode");
-
-	if (savedTheme === "space") {
-		document.body.classList.add("space-theme");
-		if (dayMode === "true") {
-			document.body.classList.add("day-mode");
-		}
-	}
+	const savedTheme = localStorage.getItem("selectedTheme") || 'default';
+	setTheme(savedTheme);
 }

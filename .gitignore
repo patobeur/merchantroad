@@ -1,0 +1,5 @@
+# Ignore sensitive configuration files
+php/config.php
+
+# Ignore log files
+*.log

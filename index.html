@@ -38,10 +38,39 @@
 					</div>
 				</div>
 			</div>
+			<div id="user-info" class="navbar-user-info hidden">
+				<span id="user-name-display"></span>
+				<button id="btn-logout">Déconnexion</button>
+			</div>
 		</nav>
 
-		<!-- Écran de jeu -->
-		<div id="start-screen">
+		<!-- Écran d'authentification -->
+		<div id="auth-screen">
+			<div class="card" id="auth-card">
+				<div id="login-form-container">
+					<h2>Connexion</h2>
+					<form id="login-form">
+						<input type="email" id="login-email" placeholder="Email" required />
+						<input type="password" id="login-password" placeholder="Mot de passe" required />
+						<button type="submit">Se connecter</button>
+					</form>
+					<p>Pas de compte ? <a href="#" id="show-register">S'inscrire</a></p>
+				</div>
+				<div id="register-form-container" class="hidden">
+					<h2>Inscription</h2>
+					<form id="register-form">
+						<input type="text" id="register-name" placeholder="Nom" required />
+						<input type="email" id="register-email" placeholder="Email" required />
+						<input type="password" id="register-password" placeholder="Mot de passe" required />
+						<button type="submit">S'inscrire</button>
+					</form>
+					<p>Déjà un compte ? <a href="#" id="show-login">Se connecter</a></p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Écran de démarrage (après connexion) -->
+		<div id="start-screen" class="hidden">
 			<div class="card" id="start-card">
 				<h1>Space Dealer</h1>
 				<p>Un jeu de commerce et de voyage.</p>
@@ -51,6 +80,8 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Écran de jeu -->
 		<div id="game-screen" class="hidden">
 			<main class="layout">
 				<section id="main-panel">
