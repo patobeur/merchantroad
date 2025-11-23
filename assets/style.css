@@ -35,6 +35,14 @@ button:disabled {
 	cursor: not-allowed;
 }
 
+button.sellStock {
+	padding: 0rem;
+	background: #e91010;
+	text-align: center;
+}
+button:disabled.sellStock {
+	background: #e91010;
+}
 .hidden {
 	display: none !important;
 }
