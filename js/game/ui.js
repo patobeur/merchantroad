@@ -1,5 +1,5 @@
 // js/game/ui.js
-import { gameState, selectedCityName, setSelectedCityName, listSaves, loadGame, deleteSave } from "./state.js";
+import { gameState, selectedCityName, setSelectedCityName, listSaves, loadGame, deleteSave, saveGame } from "./state.js";
 import { doTrade, startTravel, finishTravel, showGameScreen } from "./main.js";
 
 let travelIntervalId = null;
