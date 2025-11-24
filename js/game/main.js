@@ -5,6 +5,12 @@ import { register, login, logout, getStatus } from './api.js';
 
 let travelIntervalId = null;
 let worldData = null; // To store loaded world data
+let currentUserName = null;
+
+// Helper to get the standardized name for the autosave slot
+function getAutosaveSlotName() {
+    return `${currentUserName}_1`;
+}
 
 // --- Core Game Logic (largely unchanged) ---
 
@@ -67,7 +73,7 @@ export function doTrade(type, res, qtyStr) {
         showMessage(`Vente de ${qty} ${res}.`);
     }
 
-    saveGame('autosave').then(() => console.log("Autosave complete."));
+    saveGame(getAutosaveSlotName()).then(() => console.log("Autosave complete."));
     renderAll();
 }
 
@@ -103,7 +109,7 @@ export function startTravel(destination) {
         startTime: Date.now(),
     };
 
-    saveGame('autosave').then(() => console.log("Travel started, saved."));
+    saveGame(getAutosaveSlotName()).then(() => console.log("Travel started, saved."));
     showTravelOverlay();
 
     if (travelIntervalId) clearInterval(travelIntervalId);
@@ -118,7 +124,7 @@ export function finishTravel() {
     gameState.voyage = null;
     setSelectedCityName(v.arrivee);
     hideTravelOverlay();
-    saveGame('autosave').then(() => showMessage(`Arrivé à ${v.arrivee}.`));
+    saveGame(getAutosaveSlotName()).then(() => showMessage(`Arrivé à ${v.arrivee}.`));
     renderAll();
 }
 
@@ -140,6 +146,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const status = await getStatus();
     if (status.loggedIn) {
+        currentUserName = status.user_name;
         showStartScreen(status.user_name);
         const saves = await listSaves();
         document.getElementById("start-load-game").disabled = saves.length === 0;
@@ -172,21 +179,20 @@ function setupEventListeners() {
         }
     });
     document.getElementById("btn-load-game").addEventListener("click", showLoadGameModal);
-    document.getElementById("btn-save-game").addEventListener("click", async () => {
-        const saveName = prompt("Entrez un nom pour votre sauvegarde :", "manual-save");
-        if (saveName) {
-            await saveGame(saveName);
-            showMessage("Partie sauvegardée.");
-        }
-    });
+    document.getElementById("btn-save-game").addEventListener("click", () => showSaveGameModal(currentUserName));
     document.getElementById("btn-reset-save").addEventListener("click", handleResetSaves);
 
 
     // --- Modal Logic ---
-    const modal = document.getElementById("load-game-modal");
-    modal.querySelector(".close-button").addEventListener("click", hideLoadGameModal);
+    const loadModal = document.getElementById("load-game-modal");
+    loadModal.querySelector(".close-button").addEventListener("click", hideLoadGameModal);
+
+    const saveModal = document.getElementById("save-game-modal");
+    saveModal.querySelector(".close-button").addEventListener("click", hideSaveGameModal);
+
     window.addEventListener("click", (event) => {
-        if (event.target === modal) hideLoadGameModal();
+        if (event.target === loadModal) hideLoadGameModal();
+        if (event.target === saveModal) hideSaveGameModal();
     });
 }
 
@@ -198,6 +204,7 @@ async function handleLogin(e) {
     const password = document.getElementById('login-password').value;
     const result = await login(email, password);
     if (result.success) {
+        currentUserName = result.user_name;
         showMessage('Connexion réussie !');
         showStartScreen(result.user_name);
         const saves = await listSaves();
@@ -229,7 +236,8 @@ async function handleLogout() {
 
 async function handleNewGame() {
     createNewGameState(worldData);
-    await saveGame('autosave'); // Save the new game state to the server
+    // A new game always populates the autosave slot.
+    await saveGame(getAutosaveSlotName());
     const status = await getStatus();
     showGameScreenUI(status.user_name);
     showGameScreen();

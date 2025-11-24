@@ -33,11 +33,23 @@ function saveGameData($saveName, $gameState) {
 
         $villeActuelleId = $villeIds[$gameState['joueur']['villeActuelle']] ?? null;
 
-        // 2. Check for existing save and delete old data (stocks, cargaison)
+        // 2. Enforce save limit: check for existing save and count total saves.
         $stmt = $pdo->prepare("SELECT id FROM mr_saves WHERE user_id = ? AND save_name = ?");
         $stmt->execute([$userId, $saveName]);
         $existingSave = $stmt->fetch();
 
+        if (!$existingSave) {
+            // This is a new save slot. Check if the user is at their limit.
+            $stmt = $pdo->prepare("SELECT count(id) FROM mr_saves WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $saveCount = $stmt->fetchColumn();
+            if ($saveCount >= 3) {
+                $pdo->rollBack();
+                return ['success' => false, 'message' => 'You have reached the maximum of 3 save slots.'];
+            }
+        }
+
+        // 3. Upsert the save data
         $saveId = null;
         if ($existingSave) {
             $saveId = $existingSave['id'];

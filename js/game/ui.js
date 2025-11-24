@@ -364,6 +364,58 @@ export function hideLoadGameModal() {
 	document.getElementById("load-game-modal").classList.add("hidden");
 }
 
+async function renderSaveSlots(userName) {
+    const container = document.getElementById("save-slot-container");
+    clearElement(container);
+    const saves = await listSaves();
+    const saveMap = new Map(saves.map(s => [s.save_name, s]));
+
+    for (let i = 1; i <= 3; i++) {
+        const slotName = `${userName}_${i}`;
+        const save = saveMap.get(slotName);
+
+        const item = document.createElement("div");
+        item.className = "save-item";
+
+        const info = document.createElement("div");
+        info.className = "save-item-info";
+
+        let slotLabel = `Emplacement ${i}`;
+        if (i === 1) slotLabel += " (Auto-Save)";
+
+        if (save) {
+            const date = new Date(save.updated_at).toLocaleString("fr-FR");
+            info.textContent = `${slotLabel}: ${date}`;
+        } else {
+            info.textContent = `${slotLabel}: Vide`;
+        }
+        item.appendChild(info);
+
+        const actions = document.createElement("div");
+        actions.className = "save-item-actions";
+
+        const btnSave = document.createElement("button");
+        btnSave.textContent = "Sauvegarder ici";
+        btnSave.addEventListener("click", async () => {
+            await saveGame(slotName);
+            showMessage(`Partie sauvegardée dans l'emplacement ${i}.`);
+            hideSaveGameModal();
+        });
+        actions.appendChild(btnSave);
+        item.appendChild(actions);
+        container.appendChild(item);
+    }
+}
+
+export async function showSaveGameModal(userName) {
+    await renderSaveSlots(userName);
+    document.getElementById("save-game-modal").classList.remove("hidden");
+}
+
+export function hideSaveGameModal() {
+    document.getElementById("save-game-modal").classList.add("hidden");
+}
+
 export function setTheme(theme) {
 	const body = document.body;
 	localStorage.setItem('selectedTheme', theme);
