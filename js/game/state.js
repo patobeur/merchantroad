@@ -102,6 +102,10 @@ export async function loadGame(saveName) {
         if (!state.joueur.niveau) state.joueur.niveau = 1;
         state.joueur.reductionVoyage = computeReduction(state.joueur.niveau);
 
+        // Merge static client-side data like routes into the loaded state
+        const worldData = loadWorldData();
+        state.routes = deepClone(worldData.routes);
+
         gameState = state;
         selectedCityName = gameState.joueur.villeActuelle;
         return state;
